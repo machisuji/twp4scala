@@ -11,6 +11,6 @@ object Hello extends App {
 
   Client.run(echo) { echo =>
     val (text, letters) = echo.echo("Hallo Welt!")
-    println("\""+text+"\" contains "+letters+" letters.")
+    println("\"%s\" contains %d letters.".format(text, letters))
   }
 }
