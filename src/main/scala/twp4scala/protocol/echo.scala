@@ -3,6 +3,9 @@ package twp4scala.protocol
 import twp4scala._
 
 trait Echo extends Twp {
+
+  def protocolId = 2
+
   def echo(text: String): (String, Int) = {
     out write message(0) // msg 0 [=request]
     out write string(text)

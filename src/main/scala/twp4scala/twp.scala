@@ -9,12 +9,14 @@ trait Protocol extends Connection {
 }
 
 trait Twp extends Protocol with TwpReader with TwpWriter {
+
+  def protocolId: Int
+
   def initiate {
     val init = "TWP3\n".getBytes("ISO-8859-1")
-    val protocol = 2 // Echo
 
     out write init
-    out write shortInt(protocol)
+    out write shortInt(protocolId)
 
     out.flush()
   }
