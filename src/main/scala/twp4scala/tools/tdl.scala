@@ -1,25 +1,15 @@
 package twp4scala.tools
 
 import scala.util.parsing.combinator.syntactical._
-import scala.util.matching.Regex
-import java.io.Reader
 
-object TDL extends StandardTokenParsers {
+object TDL extends StandardTokenParsers with RegexParsers {
 
   lexical.delimiters ++= List("{", "}", ";", "=")
   lexical.reserved += ("int", "string", "binary", "any", "defined", "by", "struct",
     "optional", "sequence", "union", "case", "typedef", "message", "protocol", "ID")
 
-  implicit def regex(rgx: Regex) = new Parser[String] {
-    def apply(in: Input) = {
-      val text = in.first.chars
-      if (rgx.pattern.matcher(text).matches) Success(text, in.rest)
-      else Error(text + " didn't match ´" + rgx + "´", in)
-    }
-  }
-
   def identifier = ident
-  def number = """\d+""".r
+  def number = regex("""\d+""", error = "not a number")
 
   def `type` = primitiveType | identifier | "any" ~ "defined" ~ "by" ~ identifier
   def primitiveType = "int" | "string" | "binary" | "any"
