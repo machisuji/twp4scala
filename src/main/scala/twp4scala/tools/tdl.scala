@@ -10,13 +10,13 @@ object TDL extends StandardTokenParsers with RegexParsers with Flatten {
   lexical.reserved += ("int", "string", "binary", "any", "defined", "by", "struct",
     "optional", "sequence", "union", "case", "typedef", "message", "protocol", "ID")
 
-  def identifier: Parser[Identifier] = ident ^^ (Identifier(_))
+  def identifier = ident ^^ (Identifier)
   def number: Parser[Int] = regex("""\d+""", error = "not a number") ^^ (_.toInt)
 
   def `type`: Parser[Type] = (
       primitiveType
     | identifier
-    | "any" ~ "defined" ~ "by" ~> identifier ^^ (id => AnyDefinedBy(id))
+    | "any" ~ "defined" ~ "by" ~> identifier ^^ (AnyDefinedBy)
   )
   def primitiveType: Parser[PrimitiveType] = (
       "int"     ^^ (_ => IntType)
@@ -33,35 +33,21 @@ object TDL extends StandardTokenParsers with RegexParsers with Flatten {
   def field = opt("optional") ~ `type` ~ identifier <~ ";" ^^ (
     (opt: Option[String], tp: Type, id: Identifier) => Field(opt.isDefined, tp, id)
   )
-  def sequencedef = ("sequence" ~ "<" ~> `type` <~ ">") ~ identifier <~ ";" ^^ (
-    (tp: Type, id: Identifier) => SequenceDefinition(tp, id)
-  )
-  def uniondef = ("union" ~> identifier <~ "{") ~ rep1(casedef) <~ "}" ^^ (
-    (id: Identifier, cases: List[CaseDefinition]) => UnionDefinition(id, cases)
-  )
-  def casedef = ("case" ~> number <~ ":") ~ `type` ~ identifier <~ ";" ^^ (
-    (num: Int, tp: Type, id: Identifier) => CaseDefinition(num, tp, id)
-  )
-  def forwarddef = "typedef" ~> identifier <~ ";" ^^ (
-    (id: Identifier) => ForwardDefinition(id)
-  )
+  def sequencedef = ("sequence" ~ "<" ~> `type` <~ ">") ~ identifier <~ ";" ^^ (SequenceDefinition)
+  def uniondef = ("union" ~> identifier <~ "{") ~ rep1(casedef) <~ "}" ^^ (UnionDefinition)
+  def casedef = ("case" ~> number <~ ":") ~ `type` ~ identifier <~ ";" ^^ (CaseDefinition)
+  def forwarddef = "typedef" ~> identifier <~ ";" ^^ (ForwardDefinition)
 
   def messagedef = ("message" ~> identifier <~ "=") ~
       (   messageid       ^^ (_.toInt)
         | "ID" ~> number  ^^ (_.toInt)
-      ) ~ ("{" ~> rep(field) <~ "}") ^^ (
-    (id: Identifier, num: Int, fields: List[Field]) => MessageDefinition(id, num, fields)
-  )
+      ) ~ ("{" ~> rep(field) <~ "}") ^^ (MessageDefinition)
   def messageid = """[0-7]""".r
 
-  def protocol = "protocol" ~> identifier ~ ("=" ~ "ID" ~> number <~ "{") ~ rep(protocolelement) <~ "}" ^^ (
-    (id: Identifier, num: Int, elements: List[ProtocolElement]) => Protocol(id, num, elements)
-  )
+  def protocol = "protocol" ~> identifier ~ ("=" ~ "ID" ~> number <~ "{") ~ rep(protocolelement) <~ "}" ^^ (Protocol)
   def protocolelement: Parser[ProtocolElement] = typedef | messagedef
 
-  def specification = rep(protocol | messagedef | structdef) ^^ (
-    (elements: List[SpecificationElement]) => Specification(elements)
-  )
+  def specification = rep(protocol | messagedef | structdef) ^^ (Specification)
 
   def parseAll[T](p: Parser[T], in: String): ParseResult[T] = phrase(p)(new lexical.Scanner(in))
   def parseFile[T](p: Parser[T], file: String): ParseResult[T] = parseAll(p, io.Source.fromFile(file).mkString)
