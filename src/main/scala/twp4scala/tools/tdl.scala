@@ -30,12 +30,6 @@ object TDL extends StandardTokenParsers with RegexParsers {
 
   def specification = rep(protocol | messagedef | structdef)
 
-
-  def test[T](input: String, parser: Parser[T] = specification) = parser(new lexical.Scanner(input)) match {
-    case Success(res, _) => println("Success: " + res)
-    case Failure(msg, _) => println("Failure: " + msg)
-    case Error(msg, _) => println("Error: " + msg)
-  }
-  def testFile[T](file: String, parser: Parser[T] = specification) = test(io.Source.fromFile(file).mkString, parser)
-  // def test(input: String) = parseAll(specification, input)
+  def parseAll[T](p: Parser[T], in: String): ParseResult[T] = phrase(p)(new lexical.Scanner(in))
+  def parseFile[T](p: Parser[T], file: String): ParseResult[T] = parseAll(p, io.Source.fromFile(file).mkString)
 }
