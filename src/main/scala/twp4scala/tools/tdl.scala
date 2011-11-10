@@ -14,9 +14,9 @@ object TDL extends StandardTokenParsers with RegexParsers with Flatten {
   def number: Parser[Int] = regex("""\d+""", error = "not a number") ^^ (_.toInt)
 
   def `type`: Parser[Type] = (
-      primitiveType
+      "any" ~ "defined" ~ "by" ~> identifier ^^ (AnyDefinedBy)
     | identifier
-    | "any" ~ "defined" ~ "by" ~> identifier ^^ (AnyDefinedBy)
+    | primitiveType
   )
   def primitiveType: Parser[PrimitiveType] = (
       "int"     ^^ (_ => IntType)
