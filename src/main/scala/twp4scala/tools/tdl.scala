@@ -10,8 +10,10 @@ object TDL extends StandardTokenParsers with RegexParsers with Flatten {
   lexical.reserved += ("int", "string", "binary", "any", "defined", "by", "struct",
     "optional", "sequence", "union", "case", "typedef", "message", "protocol", "ID")
 
-  def identifier = ident ^^ (Identifier)
-  def number: Parser[Int] = regex("""\d+""", error = "not a number") ^^ (_.toInt)
+  def identifier = guard(ident) ~>
+    regex("\\w+", error = "Identifier expected but ':token' found.") ^^ (Identifier)
+
+  def number = regex("\\d+", error = "Number expected but ':token' found.") ^^ (_.toInt)
 
   def `type`: Parser[Type] = (
       "any" ~ "defined" ~ "by" ~> identifier ^^ (AnyDefinedBy)
@@ -42,7 +44,7 @@ object TDL extends StandardTokenParsers with RegexParsers with Flatten {
       (   messageid       ^^ (_.toInt)
         | "ID" ~> number  ^^ (_.toInt)
       ) ~ ("{" ~> rep(field) <~ "}") ^^ (MessageDefinition)
-  def messageid = """[0-7]""".r
+  def messageid = regex("[0-7]", "Expected protocol-specific number between 0 and 7 but found ':token'.")
 
   def protocol = "protocol" ~> identifier ~ ("=" ~ "ID" ~> number <~ "{") ~ rep(protocolelement) <~ "}" ^^ (Protocol)
   def protocolelement: Parser[ProtocolElement] = typedef | messagedef
