@@ -6,7 +6,7 @@ import twp4scala.tools.ast._
 
 object TDL extends StandardTokenParsers with RegexParsers with Flatten {
 
-  lexical.delimiters ++= List("{", "}", ";", "=")
+  lexical.delimiters ++= List("{", "}", ";", "=", "<", ">")
   lexical.reserved += ("int", "string", "binary", "any", "defined", "by", "struct",
     "optional", "sequence", "union", "case", "typedef", "message", "protocol", "ID")
 
