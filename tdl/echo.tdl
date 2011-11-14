@@ -3,7 +3,7 @@ protocol Echo = ID 2 {
     string text;
   }
 
-  message Reply=1{
+  message Reply=foo{
     string text;
     int number_of_letters;
   }

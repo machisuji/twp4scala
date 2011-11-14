@@ -10,7 +10,7 @@ trait RegexParsers { this: TokenParsers =>
       val text = in.first.chars
       if (regex.pattern.matcher(text).matches) Success(text, in.rest)
       else errorMsg.orElse(Some("\":text\" didn't match /:regex/")).map(_
-        .replace(":text", text)
+        .replace(":token", text)
         .replace(":regex", regex.toString)
       ).map(Error(_, in)).get
     }
