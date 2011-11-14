@@ -30,7 +30,22 @@ trait TwpReader extends ByteOperations {
 
   def tag = in.read
 
-  def message = Some(in.read - 4).filter(n => n >= 0 && n <= 7)
+  def expect(expected: Int, msg: String = null): Int = {
+    val actual = in.read
+    val info = if (msg != null) "(" + msg + ")" else ""
+    if (expected == actual) actual
+    else throw new RuntimeException("Expected " + expected + " " + info + ", got: " + actual)
+  }
+  def expectBecause(expected: Int, because: String): Int = expect(expected, because)
+
+  def expect(expected: Array[Byte]): Int = expect(expected.head.toInt)
+  def expectBecause(expected: Array[Byte], because: String): Int = expect(expected.head.toInt, because)
+
+  def message = {
+    val msg = in.read - 4
+    if (0 <= msg && msg <= 7) msg
+    else throw new RuntimeException("Expected message, got: " + msg)
+  }
 
   def string = in.read match {
     case short if short >= 17 && short <= 126 => {

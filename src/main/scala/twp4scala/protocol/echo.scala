@@ -11,12 +11,10 @@ trait Echo extends Twp {
     out write string(text)
     out write endOfContent
 
-    val ret = message.map {
+    val result = message match {
       case 1 => (string, shortInt) // msg 1 [=reply]
-      case i => throw new RuntimeException("Expected Reply, got: " + i)
+      case n => throw new RuntimeException("Expected Reply, got: " + n)
     }
-    val end = in.read
-    if (end != 0) throw new RuntimeException("Expected endOfContent, got: " + end)
-    else ret.get
+    expect(endOfContent); result
   }
 }
