@@ -3,12 +3,12 @@ package twp4scala
 import java.io._
 import java.net._
 
-trait Protocol extends Connection {
+trait AbstractProtocol extends Connection {
   def initiate
   def shutdown
 }
 
-trait Twp extends Protocol with TwpReader with TwpWriter {
+trait Protocol[P <: Protocol[P]] extends AbstractProtocol with TwpReader with TwpWriter {
 
   def protocolId: Int
 
@@ -21,7 +21,42 @@ trait Twp extends Protocol with TwpReader with TwpWriter {
     out.flush()
   }
 
+  def peek(in: PushbackInputStream): Int = {
+    val ret = in.read
+    in.unread(1)
+    ret
+  }
+
+  /**
+   * Can push back exactly one byte for checking message tags.
+   */
+  abstract override lazy val in = new PushbackInputStream(super.in, 1)
+
   def shutdown = close
+
+  def ! (msg: Message[P]) = {
+    msg send this.asInstanceOf[P]
+    out.flush
+  }
+
+  def receive[R](reader: PartialFunction[PushbackInputStream, R]) = {
+    val data = in.read
+    val forDefinedAt = new ByteArrayInputStream(Array(data.toByte))
+    val input = new PushbackInputStream(new SequenceInputStream(forDefinedAt, in), 1)
+    in unread data
+    reader orElse new PartialFunction[PushbackInputStream, R] {
+      def isDefinedAt(in: PushbackInputStream) = true
+      def apply(in: PushbackInputStream): R = throw new RuntimeException("Unexpected response starting with " + in.read)
+    } apply input
+  }
+}
+
+trait Message[P <: Protocol[P]] {
+  def send(p: P): Unit
+}
+
+trait MessageCompanion[P <: Protocol[P], M <: Message[P]] {
+  def unapply(in: PushbackInputStream): Option[_]
 }
 
 trait TwpReader extends ByteOperations {
