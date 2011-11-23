@@ -12,8 +12,13 @@ trait Connection {
 trait TcpConnection extends Connection {
   def host: String
   def port: Int
+  def timeout: Int = 30000
 
-  val socket = new Socket(host, port)
+  val socket = {
+    val s = new Socket(host, port)
+    s.setSoTimeout(timeout)
+    s
+  }
   def in = socket.getInputStream
   def out = socket.getOutputStream
   def close = socket.close
