@@ -108,8 +108,6 @@ trait TwpReader extends ByteOperations {
     case 14 => in.take(4).toInt
     case tag => throw new RuntimeException("Expected int, got: " + tag)
   }
-
-  def test(implicit in: InputStream): Array[Byte] = Array()
 }
 
 trait TwpWriter extends ByteOperations {
