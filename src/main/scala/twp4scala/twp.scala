@@ -56,37 +56,33 @@ trait MessageCompanion[P <: Protocol[P], M <: Message[P], T] extends TwpReader w
       if (in.available() == 0) Some(null.asInstanceOf[T]) // hack to make partial matches work (receive)
       else {
         val result = Some(read(in))
-        expect(endOfContent, in); result
+        expect(endOfContent, None)(in); result
       }
     } else None
   }
-  def isDefinedAt(in: InputStream): Boolean
-  def read(in: InputStream): T
+  def isDefinedAt(implicit in: InputStream): Boolean
+  def read(implicit in: InputStream): T
 }
 
 trait TwpReader extends ByteOperations {
 
-  def tag(in: InputStream) = in.read
+  def tag(implicit in: InputStream) = in.read
 
-  def expect(expected: Int, msg: String, in: InputStream): Int = {
+  def expect(expected: Int, msg: Option[String])(implicit in: InputStream): Int = {
     val actual = in.read
     val info = if (msg != null) "(" + msg + ")" else ""
     if (expected == actual) actual
     else throw new RuntimeException("Expected " + expected + " " + info + ", got: " + actual)
   }
-  def expect(expected: Int, in: InputStream): Int = expect(expected, null, in)
-  def expectBecause(expected: Int, because: String, in: InputStream): Int = expect(expected, because, in)
+  def expect(expected: Array[Byte], msg: Option[String])(implicit in: InputStream): Int = expect(expected.head.toInt, msg)(in)
 
-  def expect(expected: Array[Byte], in: InputStream): Int = expect(expected.head.toInt, null, in)
-  def expectBecause(expected: Array[Byte], because: String, in: InputStream): Int = expect(expected.head.toInt, because, in)
-
-  def message(in: InputStream) = {
+  def message(implicit in: InputStream) = {
     val msg = in.read - 4
     if (0 <= msg && msg <= 7) msg
     else throw new RuntimeException("Expected message, got: " + msg)
   }
 
-  def string(in: InputStream) = in.read match {
+  def string(implicit in: InputStream) = in.read match {
     case short if short >= 17 && short <= 126 => {
       new String(in.take(short - 17), "UTF-8")
     }
@@ -97,21 +93,23 @@ trait TwpReader extends ByteOperations {
     case tag => throw new RuntimeException("Expected string, got: " + tag)
   }
 
-  def shortInt(in: InputStream) = in.read match {
+  def shortInt(implicit in: InputStream) = in.read match {
     case 13 => in.read
     case tag => throw new RuntimeException("Expected short int, got: " + tag)
   }
 
-  def longInt(in: InputStream) = in.read match {
+  def longInt(implicit in: InputStream) = in.read match {
     case 14 => in.take(4).toInt
     case tag => throw new RuntimeException("Expected long int, got: " + tag)
   }
 
-  def int(in: InputStream) = in.read match {
+  def int(implicit in: InputStream) = in.read match {
     case 13 => in.read
     case 14 => in.take(4).toInt
     case tag => throw new RuntimeException("Expected int, got: " + tag)
   }
+
+  def test(implicit in: InputStream): Array[Byte] = Array()
 }
 
 trait TwpWriter extends ByteOperations {

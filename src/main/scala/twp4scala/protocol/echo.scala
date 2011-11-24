@@ -33,12 +33,12 @@ class Reply(val text: String, val letters: Int) extends Message {
 
 object Request extends MessageCompanion[Echo, Message, String] {
   def apply(text: String) = new Request(text)
-  def isDefinedAt(in: InputStream) = message(in) == 0
-  def read(in: InputStream) = string(in)
+  def isDefinedAt(implicit in: InputStream) = message == 0
+  def read(implicit in: InputStream) = string
 }
 
 object Reply extends MessageCompanion[Echo, Message, (String, Int)] {
   def apply(text: String, letters: Int) = new Reply(text, letters)
-  def isDefinedAt(in: InputStream) = message(in) == 1
-  def read(in: InputStream) = (string(in), int(in))
+  def isDefinedAt(implicit in: InputStream) = message == 1
+  def read(implicit in: InputStream) = (string, int)
 }
