@@ -11,7 +11,7 @@ object Hello extends App {
   val msg = args.headOption getOrElse "Hallo Welt!"
 
   Client.run(echo) { echo =>
-    echo ! Request("Let's fuck the world!")
+    echo ! Request(msg)
 
     echo.receive {
       case Reply(text, letters) => println("'%s' contains %d letters" format (text, letters))
