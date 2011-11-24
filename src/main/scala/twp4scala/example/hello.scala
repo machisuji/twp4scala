@@ -4,7 +4,12 @@ import twp4scala._
   import protocol.echo._
 
 object Hello extends App {
-  val echo = Echo("www.dcl.hpi.uni-potsdam.de", 80)
+  val echo = Echo (
+    args.drop(1).headOption              getOrElse "www.dcl.hpi.uni-potsdam.de",
+    args.drop(2).headOption.map(_.toInt) getOrElse 80
+  )
+  val msg = args.headOption getOrElse "Hallo Welt!"
+
   Client.run(echo) { echo =>
     echo ! Request("Let's fuck the world!")
 
