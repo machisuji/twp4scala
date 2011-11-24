@@ -17,17 +17,17 @@ object Echo {
 sealed trait Message extends twp4scala.Message[Echo]
 
 class Request(val text: String) extends Message {
-  def write(out: OutputStream) {
-    out write message(0)
-    out write string(text)
+  def write: Stream[Array[Byte]] = {
+    message(0) #::
+    string(text) #:: Stream.empty
   }
 }
 
 class Reply(val text: String, val letters: Int) extends Message {
-  def write(out: OutputStream) {
-    out write message(1)
-    out write string(text)
-    out write shortInt(letters)
+  def write: Stream[Array[Byte]] = {
+    message(1) #::
+    string(text) #::
+    shortInt(letters) #:: Stream.empty
   }
 }
 

@@ -29,7 +29,7 @@ trait Protocol[P <: Protocol[P]] extends AbstractProtocol with TwpReader with Tw
   def shutdown = close
 
   def ! (msg: Message[P]) = {
-    msg write out
+    msg.write.foreach(out write)
     out write endOfContent
     out.flush
   }
@@ -47,7 +47,7 @@ trait Protocol[P <: Protocol[P]] extends AbstractProtocol with TwpReader with Tw
 }
 
 trait Message[P <: Protocol[P]] extends TwpWriter {
-  def write(out: OutputStream): Unit
+  def write: Stream[Array[Byte]]
 }
 
 trait MessageCompanion[P <: Protocol[P], M <: Message[P], T] extends TwpReader with TwpWriter {
