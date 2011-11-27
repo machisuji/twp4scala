@@ -10,11 +10,12 @@ object Hello extends App {
   )
   val msg = args.headOption getOrElse "Hallo Welt!"
 
-  Client.run(echo) { echo =>
+  Runner.run(echo) { echo =>
     echo ! Request(msg)
 
-    echo.receive {
+    echo.in match {
       case Reply(text, letters) => println("'%s' contains %d letters" format (text, letters))
+      case Tag(msg) => println("Unexpected response: tag " + msg)
     }
   }
 }
