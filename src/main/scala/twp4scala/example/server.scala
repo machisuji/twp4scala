@@ -8,8 +8,7 @@ import twp4scala.protocol.echo._
 class EchoServer(val port: Int) extends TcpServer {
 
   def handleClient(socket: Socket) {
-    val echo = Echo(socket)
-    val result = Runner.run(echo) { echo =>
+    val result = Twp(Echo(socket)) { echo =>
       echo.in match {
         case Request(text)  => echo ! Reply(text, text.filter(_.isLetter).size)
         case Tag(msg)       => echo ! ErrorMessage(msg, "Unexpected message '" + msg + "', expected Request (0).")

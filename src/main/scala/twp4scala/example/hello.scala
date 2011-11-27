@@ -10,7 +10,7 @@ object Hello extends App {
   )
   val msg = args.headOption getOrElse "Hallo Welt!"
 
-  Runner.run(echo) { echo =>
+  Twp(echo) { echo =>
     echo ! Request(msg)
 
     echo.in match {

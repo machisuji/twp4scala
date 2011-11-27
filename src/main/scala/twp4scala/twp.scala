@@ -1,6 +1,20 @@
 package twp4scala
 
 import java.io.{Console => _, _}
+import scala.Either
+
+object Twp {
+  def apply[T <: AbstractProtocol, S](proto: T)(block: T => S): Either[Exception, S] = {
+    try {
+      proto.initiate
+      Right(block(proto))
+    } catch {
+      case e: Exception => Left(e)
+    } finally {
+      proto.shutdown
+    }
+  }
+}
 
 trait AbstractProtocol extends Connection {
   def initiate
