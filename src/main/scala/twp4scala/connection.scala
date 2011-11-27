@@ -23,3 +23,10 @@ trait TcpConnection extends Connection {
   def out = socket.getOutputStream
   def close = socket.close
 }
+
+trait SocketConnection extends Connection {
+  val socket: Socket
+  def in = socket.getInputStream
+  def out = socket.getOutputStream
+  def close = socket.close
+}
