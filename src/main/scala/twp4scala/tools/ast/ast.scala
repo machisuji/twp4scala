@@ -54,8 +54,8 @@ case class Protocol(val identifier: Identifier, val id: Int, val elements: List[
     "  }" ::
     "" ::
     "  sealed trait Message extends twp4scala.Message" :: Nil ++
-    elements.flatMap("" :: _.toScala).map(indent(2) )++(
-    "}" :: Nil )
+    elements.flatMap("" :: _.toScala).map(indent(2)) ++ (
+    "}" :: Nil)
   }
 }
 case class MessageDefinition(val identifier: Identifier, val number: Int, val fields: List[Field])
@@ -73,17 +73,17 @@ case class MessageDefinition(val identifier: Identifier, val number: Int, val fi
     "class %s(%s) extends Message {".format(identifier.value, fields.flatMap(_.toScala).mkString(", ")) ::
     "  def write: Stream[Array[Byte]] = {" ::
     "    message(%s.tag) #::".format(identifier.value) :: Nil ++
-    fields.flatMap(field => field.toScalaWrite.appendLast(" #::")).map(indent(4) )++(
+    fields.flatMap(field => field.toScalaWrite.appendLast(" #::")).map(indent(4)) ++ (
     "    Stream.empty" ::
     "  }" ::
-    "}" :: Nil )++(
+    "}" :: Nil) ++ (
     "" ::
     "object %s extends MessageCompanion[%s] {".format(identifier.value, typeTuple) ::
     "  def tag = %d".format(number) ::
     "  def apply%s = %s".format(applySig, applyBody) ::
     "  def read(implicit in: InputStream) = %s".format(readTuple) ::
     "}" ::
-    Nil )
+    Nil)
   }
 }
 
