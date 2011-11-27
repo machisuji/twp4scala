@@ -1,10 +1,14 @@
 package twp4scala
 
-object Client {
-  def run[T <: AbstractProtocol, S](proto: T)(block: T => S) = {
-    proto.initiate
+import scala.Either
+
+object Runner {
+  def run[T <: AbstractProtocol, S](proto: T)(block: T => S): Either[Exception, S] = {
     try {
-      block(proto)
+      proto.initiate
+      Right(block(proto))
+    } catch {
+      case e: Exception => Left(e)
     } finally {
       proto.shutdown
     }
