@@ -29,9 +29,17 @@ class RichByteArray(bytes: Array[Byte]) {
 }
 
 class RichInputStream(in: InputStream) {
-  def take(bytes: Int): Array[Byte] = {
-    val data = new Array[Byte](bytes)
-    val read = in.read(data)
-    data.take(read)
+  def take(numBytes: Int, pedantic: Boolean = true): Array[Byte] = {
+    val data = new Array[Byte](numBytes)
+    val read = fill(data, in, 0)
+    if (read < numBytes && pedantic) throw new EOFException("Reached EOF before expected number of bytes could be read.")
+    data take read
+  }
+
+  protected def fill(buffer: Array[Byte], in: InputStream, offset: Int): Int = {
+    val read = in.read(buffer, offset, buffer.size - offset)
+    if (read == -1) offset
+    else if (offset + read == buffer.size) buffer.size
+    else fill(buffer, in, offset + read)
   }
 }
