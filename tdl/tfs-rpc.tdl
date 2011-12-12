@@ -1,0 +1,51 @@
+protocol TFSRPC = ID 1 {
+    sequence<string> path;
+    sequence<string> filelist;
+
+    struct list_result {
+	filelist directories;
+	filelist files;
+    }
+
+    struct stat_result {
+	int size;
+	int mtime;  /* seconds since the Unix epoch */
+	int atime;
+    }
+
+    /* Parameter Structs */
+    struct open_parameters { path directory; string file; int mode; }
+    struct read_parameters { int fh; int count; }
+    struct write_parameters { int fh; binary data; }
+    struct seek_parameters { int fh; int offset; }
+    /* File and directory information */
+    struct stat_parameters { path directory; string file; }
+    /* File and directory manipulation */
+    struct remove_parameters { path directory; string file; }
+    /* FAM: recursive: 0 - only this directory, 1 - also subdirectories */
+    struct monitor_parameters { path directory; int recursive; binary host; int port; }
+
+    /* RPC Protocol */
+    message Request = 0 {
+	int request_id;
+	int response_expected; /* 0 or 1 */
+	string operation;
+	any defined by operation parameters;
+    }
+
+    message Reply = 1 {
+	int request_id;
+	any defined by request_id result;
+    }
+
+    message CancelRequest = 2 {
+	int request_id;
+    }
+
+    message CloseConnection = 4 {
+    }
+
+    struct RPCException {
+	string text;
+    }
+}
