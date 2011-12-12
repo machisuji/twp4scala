@@ -1,7 +1,7 @@
 package twp4scala
 
-import java.io.{Console => _, _}
 import scala.Either
+import java.lang.IllegalStateException
 
 object Twp {
   def apply[T <: AbstractProtocol, S](proto: T)(block: T => S): Either[Exception, S] = {
@@ -28,7 +28,7 @@ trait Protocol extends AbstractProtocol with TwpReader with TwpWriter {
   /**
    * Can push back exactly one byte for checking message tags.
    */
-  abstract override lazy val in = new PushbackInputStream(super.in, 1)
+  abstract override lazy val in = new Input(super.in, 1)
 
   def shutdown = close
 
@@ -68,74 +68,149 @@ trait Server extends Protocol {
   }
 }
 
-trait Message extends TwpWriter {
+trait TwpReadable[T] {
+  def read(implicit in: Input): T
+}
+
+trait TwpWritable {
   def write: Stream[Array[Byte]]
 }
 
-trait MessageCompanion[T] extends TwpReader with TwpWriter {
-  def unapply(in: PushbackInputStream): Option[T] = {
+trait Message extends TwpWriter with TwpWritable with TwpConversions
+
+trait MessageCompanion[S <: Message, T] extends TwpReader with TwpWriter with TwpReadable[T] with TwpConversions {
+  def unapply(in: Input): Option[T] = {
     if (isDefinedAt(in)) {
       val result = Some(read(in))
-      expect(endOfContent, None)(in)
+      checkComplete(in)
       result
     } else None
   }
+
+  def apply(values: T): S
 
   /**
    * Checks whether this kind of message can be read from the given PushbackInputStream.
    * Any given implementation must not consume any data from the stream if the result is negative.
    * That is all read bytes must be pushed back in that case.
    */
-  def isDefinedAt(implicit in: PushbackInputStream): Boolean =
+  def isDefinedAt(implicit in: Input): Boolean =
     Some(message).filter(tag !=).map(in.unread).map(_ => false) getOrElse true
 
+  /**
+   * Checks whether or not the Message has been completely read. Expected to throw an Exception if not.
+   */
+  def checkComplete(in: Input): Unit = expect(endOfContent, None)(in)
+
   def tag: Int
-  def read(implicit in: InputStream): T
+  def read(implicit in: Input): T
+
+  implicit def save(msg: S): Array[Byte] = msg.write.reduceLeft(_ ++ _)
+  implicit def in(implicit input: Input): S = apply(read(input))
+}
+
+trait EmptyMessageCompanion[S <: Message] extends TwpReader with TwpWriter with TwpConversions { this: S =>
+  def unapply(in: Input): Boolean = isDefinedAt(in)
+
+  def apply() = this
+
+  def tag: Int
+
+  /**
+   * Checks whether this kind of message can be read from the given PushbackInputStream.
+   * Any given implementation must not consume any data from the stream if the result is negative.
+   * That is all read bytes must be pushed back in that case.
+   */
+  def isDefinedAt(implicit in: Input): Boolean =
+    Some(message).filter(tag !=).map(in.unread).map(_ => false) getOrElse true
+
+  /**
+   * Checks whether or not the Message has been completely read. Expected to throw an Exception if not.
+   */
+  def checkComplete(in: Input): Unit = expect(endOfContent, None)(in)
+
+  implicit def save(msg: S): Array[Byte] = msg.write.reduceLeft(_ ++ _)
+  implicit def in(implicit input: Input): S = apply()
+}
+
+trait Struct extends Message
+
+trait StructCompanion[S <: Struct, T] extends MessageCompanion[S, T] {
+  def tag = -1 // not used
+  override def isDefinedAt(implicit in: Input) = true
 }
 
 class ErrorMessage(val failedMsgType: Int, val error: String) extends Message {
-  def write: Stream[Array[Byte]] = {
-    message(ErrorMessage.tag) #::
-    someInt(failedMsgType) #::
-    string(error) #:: Stream.empty
-  }
+  def write = ErrorMessage.tag.msg #:: failedMsgType #:: error #:: Output
 }
 
-object ErrorMessage extends MessageCompanion[(Int, String)] {
+object ErrorMessage extends MessageCompanion[ErrorMessage, (Int, String)] {
   def tag = 8
   def apply(failedMsgType: Int, error: String) = new ErrorMessage(failedMsgType, error)
-  def apply(in: InputStream, error: String) = new ErrorMessage(in.read, error)
-  def read(implicit in: InputStream) = (someInt, string)
+  def apply(in: Input, error: String) = new ErrorMessage(in.read, error)
+  def apply(values: (Int,  String)) = new ErrorMessage(values._1, values._2)
+  def read(implicit in: Input) = (someInt, string)
 }
 
 class Tag(msg: Int)
 
 object Tag extends TwpReader {
   def apply(msg: Int) = new Tag(msg)
-  def unapply(in: PushbackInputStream): Option[Int] = {
+  def unapply(in: Input): Option[Int] = {
     val msg = message(in)
     if (msg >= 0) Some(msg)
     else None
   }
 }
 
+trait TwpConversions extends TwpWriter {
+  implicit def writeStringSequence(seq: Seq[String]): Array[Byte] = seq.flatMap(string).toArray
+  implicit def writeString(str: String): Array[Byte] = string(str)
+  
+  implicit object stringReader extends SequenceReader[String, Seq[String]] {
+    def map(in: Input) = string(in)
+  }
+  
+  implicit def writeMessage(tag: Int) = new {
+    def msg = message(tag)
+  }
+  
+  implicit def writeInt(i: Int) = someInt(i)
+  implicit def writeExplicitInt(i: Int) = new {
+    def short = shortInt(i)
+    def long = longInt(i)
+  }
+}
+
+trait SequenceReader[T, S >: Seq[T]] extends TwpReadable[S] with TwpReader {
+  def map(in: Input): T
+  
+  def read(implicit in: Input): S = readSequence(map)
+
+  def readSequence[T](reader: (Input) => T)(implicit in: Input): Seq[T] =
+    Iterator.continually(in.read).takeWhile(0 !=).map(in.unread).map(_ => reader(in)).toSeq
+}
+
+object TwpConversions extends TwpConversions
+
 trait TwpReader extends ByteOperations {
 
-  def tag(implicit in: InputStream) = in.read
+  def tag(implicit in: Input) = in.read
 
-  def expect(expected: Int, msg: Option[String])(implicit in: InputStream): Int = {
+  def expect(expected: Int, msg: Option[String])(implicit in: Input): Int = {
     val actual = in.read
     val info = if (msg != null) "(" + msg + ")" else ""
     if (expected == actual) actual
     else throw new RuntimeException("Expected " + expected + " " + info + ", got: " + actual)
   }
-  def expect(expected: Array[Byte], msg: Option[String])(implicit in: InputStream): Int = expect(expected.head.toInt, msg)(in)
+  def expect(expected: Array[Byte], msg: Option[String])(implicit in: Input): Int =
+    expect(expected.head.toInt, msg)(in)
 
-  def message(implicit in: InputStream) = {
+  def message(implicit in: Input) = {
     in.read - 4
   }
 
-  def string(implicit in: InputStream) = in.read match {
+  def string(implicit in: Input) = in.read match {
     case short if short >= 17 && short <= 126 => {
       new String(in.take(short - 17), "UTF-8")
     }
@@ -146,27 +221,37 @@ trait TwpReader extends ByteOperations {
     case tag => throw new RuntimeException("Expected string, got: " + tag)
   }
 
-  def shortInt(implicit in: InputStream) = in.read match {
+  def shortInt(implicit in: Input) = in.read match {
     case 13 => in.read
     case tag => throw new RuntimeException("Expected short int, got: " + tag)
   }
 
-  def longInt(implicit in: InputStream) = in.read match {
+  def longInt(implicit in: Input) = in.read match {
     case 14 => in.take(4).toInt
     case tag => throw new RuntimeException("Expected long int, got: " + tag)
   }
 
-  def someInt(implicit in: InputStream) = in.read match {
+  def someInt(implicit in: Input) = in.read match {
     case 13 => in.read
     case 14 => in.take(4).toInt
     case tag => throw new RuntimeException("Expected int, got: " + tag)
   }
 
-  def peek(in: PushbackInputStream): Int = {
+  def sequence[S](implicit in: Input, reader: TwpReadable[S]): S = reader.read(in)
+
+  def peek(in: Input): Int = {
     val byte = in.read
     in unread byte
     byte
   }
+
+  /**
+   * Checks whether the input starts with the given tag.
+   * If so, the tag is consumed and the method returns true.
+   * If not, the tag is unread and the method returns false.
+   */
+  def startsWith(tag: Int, in: Input): Boolean =
+    Some(message(in)).filter(tag !=).map(in.unread).map(_ => false) getOrElse true
 }
 
 trait TwpWriter extends ByteOperations {
@@ -175,6 +260,11 @@ trait TwpWriter extends ByteOperations {
 
   def endOfContent = Array(0.toByte)
   def noValue = Array(1.toByte)
+  
+  def sequence = Array(3.toByte)
+  
+  def sequence[T <: TwpWritable](seq: Seq[T]): Array[Byte] =
+    seq.flatMap(_.write).flatten.toArray ++ endOfContent
 
   def message(id: Int): Array[Byte] = (4 + id).getBytes(1)
 

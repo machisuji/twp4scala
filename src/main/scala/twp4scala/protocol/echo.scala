@@ -1,7 +1,6 @@
 package twp4scala.protocol.echo
 
 import twp4scala._
-import java.io.{OutputStream, InputStream}
 import java.net.Socket
 
 trait Echo extends Protocol {
@@ -22,28 +21,21 @@ object Echo {
 sealed trait Message extends twp4scala.Message // seal for pattern matching
 
 class Request(val text: String) extends Message {
-  def write: Stream[Array[Byte]] = {
-    message(Request.tag) #::
-    string(text) #:: Stream.empty
-  }
+  def write = Request.tag.msg #:: text #:: Output
 }
 
 class Reply(val text: String, val letters: Int) extends Message {
-  def write: Stream[Array[Byte]] = {
-    message(Reply.tag) #::
-    string(text) #::
-    someInt(letters) #:: Stream.empty
-  }
+  def write = Reply.tag.msg #:: text #:: letters #:: Output
 }
 
-object Request extends MessageCompanion[String] {
+object Request extends MessageCompanion[Request, String] {
   def tag = 0
   def apply(text: String) = new Request(text)
-  def read(implicit in: InputStream) = string
+  def read(implicit in: Input) = string
 }
 
-object Reply extends MessageCompanion[(String, Int)] {
+object Reply extends MessageCompanion[Reply, (String, Int)] {
   def tag = 1
-  def apply(text: String, letters: Int) = new Reply(text, letters)
-  def read(implicit in: InputStream) = (string, someInt)
+  def apply(values: (String, Int)) = new Reply(values._1, values._2)
+  def read(implicit in: Input) = (string, someInt)
 }
