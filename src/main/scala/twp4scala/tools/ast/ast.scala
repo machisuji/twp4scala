@@ -181,9 +181,10 @@ case class StructDefinition(val identifier: Identifier, val number: Option[Int],
 case class SequenceDefinition(val `type`: Type, val identifier: Identifier) extends TypeDefinition {
   override def toScala = {
     val name = identifier.toScala.mkString
-    val method = name.decapitalize
     "type %s = Seq[%s]".format(name, `type`.toScala.mkString) ::
-    "def %s(implicit in: Input) = sequence[%s]".format(method, name) :: Nil
+    "object %s {".format(name) ::
+      "def in(implicit in: Input) = sequence[%s]".format(name) ::
+    "}" :: Nil
   }
 }
 case class UnionDefinition(val identifier: Identifier, val caseDefinitions: List[CaseDefinition]) extends TypeDefinition
