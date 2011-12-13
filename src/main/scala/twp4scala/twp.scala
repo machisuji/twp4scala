@@ -257,6 +257,16 @@ trait TwpReader extends ByteOperations {
     case tag => throw new RuntimeException("Expected int, got: " + tag)
   }
 
+  def binary(implicit in: Input) = {
+    val tg = tag
+    val size =
+      if (tg == 15) in.take(1).toInt
+      else if (tg == 16) in.take(4).toInt
+      else throw new RuntimeException("Expected binary, got: " + tag)
+
+    in.take(size)
+  }
+
   def sequence[S](implicit in: Input, reader: TwpReadable[S]): S = reader.read(in)
 
   def peek(in: Input): Int = {
