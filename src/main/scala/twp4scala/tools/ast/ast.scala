@@ -64,10 +64,21 @@ case class Protocol(val identifier: Identifier, val id: Int, val elements: List[
   override def toScala = {
     "import twp4scala._" ::
     "" ::
-    "object %s extends TwpReader with TwpConversions {".format(identifier.value.toLowerCase) ::
+    "object %s {".format(identifier.value.toLowerCase) ::
     "" ::
     "  trait %s extends Protocol {".format(identifier.value) ::
     "    def protocolId = %d".format(id) ::
+    "  }" ::
+    "" ::
+    "  object %s {".format(identifier.value) ::
+    "    def apply(h: String, p: Int) = new TcpConnection with %s with Client {".format(identifier.value) ::
+    "      def host = h" ::
+    "      def port = p" ::
+    "    }" ::
+    "" ::
+    "    def apply(s: java.net.Socket) = new SocketConnection with %s with Server {".format(identifier.value) ::
+    "      val socket = s" ::
+    "    }" ::
     "  }" ::
     "" ::
     "  sealed trait Message extends twp4scala.Message" :: Nil ++
@@ -112,11 +123,11 @@ trait MessageSource { this: Tree =>
         "}" ::
         Nil)
 
-    "class %s(%s) extends %s {".format(identifier.value, fields.flatMap(_.toScala).mkString(", "), superClass) ::
+    ("class %s(%s) extends %s {".format(identifier.value, fields.flatMap(_.toScala).mkString(", "), superClass) ::
       ("  def write = " +
-        tag.map(_ => "%s.tag.msg #:: ".format(identifier.value)).getOrElse("") +
-        fields.flatMap(field => field.toScalaWrite.appendLast(" #:: ")).mkString + "Output"
-      ) :: "}" :: Nil ++ (if (fields.isEmpty) emptyMessage else nonEmptyMessage) filter (_ ne skip)
+        "%s.tag%s #:: ".format(identifier.value, if (superClass != "Struct") ".msg" else ".raw") +
+        fields.flatMap(field => field.toScalaWrite.appendLast(" #:: ")).mkString + "End"
+      ) :: "}" :: Nil ++ (if (fields.isEmpty) emptyMessage else nonEmptyMessage)) filter (_ ne skip)
   }
 
   private val skip = new String
@@ -186,7 +197,7 @@ case class SequenceDefinition(val `type`: Type, val identifier: Identifier) exte
   override def toScala = {
     val name = identifier.toScala.mkString
     "type %s = Seq[%s]".format(name, `type`.toScala.mkString) ::
-    "object %s {".format(name) ::
+    "object %s extends TwpReader with TwpConversions {".format(name) ::
       "def in(implicit in: Input) = sequence[%s]".format(name) ::
     "}" :: Nil
   }

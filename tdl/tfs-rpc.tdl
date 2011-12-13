@@ -1,4 +1,4 @@
-protocol TFSRPC = ID 1 {
+protocol TFS = ID 1 {
     sequence<string> path;
     sequence<string> filelist;
 

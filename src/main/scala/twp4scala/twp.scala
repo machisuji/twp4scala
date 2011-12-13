@@ -14,7 +14,21 @@ object Twp {
       proto.shutdown
     }
   }
+
+  var debug = false
+
+  private[twp4scala] def logw(msg: String) = {
+    if (Twp.debug) println("[DEBUG] write " + msg)
+  }
+  private[twp4scala] def logr(msg: String) = {
+    if (Twp.debug) println("[DEBUG] read " + msg)
+  }
+  private[twp4scala] def log(msg: String) = {
+    if (Twp.debug) println("[DEBUG] " + msg)
+  }
 }
+
+import Twp.{logr, logw, log}
 
 trait AbstractProtocol extends Connection {
   def initiate
@@ -76,7 +90,9 @@ trait TwpWritable {
   def write: Stream[Array[Byte]]
 }
 
-trait Message extends TwpWriter with TwpWritable with TwpConversions
+trait Message extends TwpWriter with TwpWritable with TwpConversions {
+  val End: Stream[Array[Byte]] = Stream.empty
+}
 
 trait MessageCompanion[S <: Message, T] extends TwpReader with TwpWriter with TwpReadable[T] with TwpConversions {
   def unapply(in: Input): Option[T] = {
@@ -133,13 +149,6 @@ trait EmptyMessageCompanion[S <: Message] extends TwpReader with TwpWriter with 
   implicit def in(implicit input: Input): S = apply()
 }
 
-trait Struct extends Message
-
-trait StructCompanion[S <: Struct, T] extends MessageCompanion[S, T] {
-  def tag = -1 // not used
-  override def isDefinedAt(implicit in: Input) = true
-}
-
 class ErrorMessage(val failedMsgType: Int, val error: String) extends Message {
   def write = message(ErrorMessage.tag) #:: failedMsgType #:: error #:: Output
 }
@@ -164,7 +173,10 @@ object Tag extends TwpReader {
 }
 
 trait TwpConversions extends TwpWriter {
-  implicit def writeStringSequence(seq: Seq[String]): Array[Byte] = seq.flatMap(string).toArray
+  implicit def writeStringSequence(seq: Seq[String]): Array[Byte] = {
+    logw("Seq[String]: " + seq.toString)
+    sequence ++ seq.flatMap(string).toArray[Byte] ++ endOfContent
+  }
   implicit def writeString(str: String): Array[Byte] = string(str)
   
   implicit object stringReader extends SequenceReader[String, Seq[String]] {
@@ -173,6 +185,7 @@ trait TwpConversions extends TwpWriter {
   
   implicit def writeMessage(tag: Int) = new {
     def msg = message(tag)
+    def raw = tag.getBytes(1)
   }
   
   implicit def writeInt(i: Int) = someInt(i)
@@ -195,6 +208,7 @@ trait TwpConversions extends TwpWriter {
         }
       }
     }
+    case u: Unit => noValue
     case _ => throw new IllegalStateException("Cannot write " + any)
   }
 }
@@ -204,19 +218,26 @@ trait SequenceReader[T, S >: Seq[T]] extends TwpReadable[S] with TwpReader {
   
   def read(implicit in: Input): S = readSequence(map)
 
-  def readSequence[T](reader: (Input) => T)(implicit in: Input): Seq[T] =
+  def readSequence[T](reader: (Input) => T)(implicit in: Input): Seq[T] = {
+    expect(3, Some("Sequence"))
     Iterator.continually(in.read).takeWhile(0 !=).map(in.unread).map(_ => reader(in)).toSeq
+  }
 }
 
 object TwpConversions extends TwpConversions
 
 trait TwpReader extends ByteOperations {
 
-  def tag(implicit in: Input) = in.read
+  def tag(implicit in: Input) = {
+    val ret = in.read
+    logr("tag " + ret); ret
+  }
 
   def expect(expected: Int, msg: Option[String])(implicit in: Input): Int = {
-    val actual = in.read
-    val info = if (msg != null) "(" + msg + ")" else ""
+    logr("expecting " + expected)
+    val actual = /*if (expected == 0 && in.available == 0) 0 else*/ in.read
+    val info = msg.map("(" + _ + ")").getOrElse("")
+    logr("actually: " + actual)
     if (expected == actual) actual
     else throw new RuntimeException("Expected " + expected + " " + info + ", got: " + actual)
   }
@@ -225,35 +246,49 @@ trait TwpReader extends ByteOperations {
 
   def message(implicit in: Input) = {
     val res = in.read
-    if (res >= 0 && res <= 11) res - 4
-    else if (res == 12) in.take(4).toInt // extension msg
+    if (res >= 0 && res <= 11) {
+      val ret = res - 4
+      logr("message " + ret); ret
+    }
+    else if (res == 12) {
+      val ret = in.take(4).toInt
+      logr("extension " + ret); ret
+    } 
     else throw new RuntimeException("Expected message/extension, got: " + res)
   }
 
   def string(implicit in: Input) = in.read match {
     case short if short >= 17 && short <= 126 => {
-      new String(in.take(short - 17), "UTF-8")
+      val ret = new String(in.take(short - 17), "UTF-8")
+      logr("short string \"%s\"" format ret); ret
     }
     case long if long == 127 => {
       val size = in.take(4).toInt
-      new String(in.take(size), "UTF-8")
+      val ret = new String(in.take(size), "UTF-8")
+      logr("long string \"%s\"" format ret); ret
     }
     case tag => throw new RuntimeException("Expected string, got: " + tag)
   }
 
   def shortInt(implicit in: Input) = in.read match {
-    case 13 => in.read
+    case 13 => {
+      val ret = in.read
+      logr("short int " + ret); ret
+    }
     case tag => throw new RuntimeException("Expected short int, got: " + tag)
   }
 
   def longInt(implicit in: Input) = in.read match {
-    case 14 => in.take(4).toInt
+    case 14 => {
+      val ret = in.take(4).toInt
+      logr("long int " + ret); ret
+    }
     case tag => throw new RuntimeException("Expected long int, got: " + tag)
   }
 
   def someInt(implicit in: Input) = in.read match {
-    case 13 => in.read
-    case 14 => in.take(4).toInt
+    case 13 => { in.unread(13); shortInt }
+    case 14 => { in.unread(14); longInt }
     case tag => throw new RuntimeException("Expected int, got: " + tag)
   }
 
@@ -264,10 +299,14 @@ trait TwpReader extends ByteOperations {
       else if (tg == 16) in.take(4).toInt
       else throw new RuntimeException("Expected binary, got: " + tag)
 
-    in.take(size)
+    val ret = in.take(size)
+    logr("binary " + ret); ret
   }
 
-  def sequence[S](implicit in: Input, reader: TwpReadable[S]): S = reader.read(in)
+  def sequence[S](implicit in: Input, reader: TwpReadable[S]): S = {
+    val ret = reader.read(in)
+    logr("sequence " + ret); ret
+  }
 
   def peek(in: Input): Int = {
     val byte = in.read
@@ -275,7 +314,10 @@ trait TwpReader extends ByteOperations {
     byte
   }
 
-  def any(implicit in: Input): Input = in
+  def any(implicit in: Input): Any = {
+    val ret = TwpAny.read
+    logr("any " + ret.toString); ret
+  }
 
   /**
    * Checks whether the input starts with the given tag.
@@ -288,29 +330,53 @@ trait TwpReader extends ByteOperations {
 
 trait TwpWriter extends ByteOperations {
 
-  def tag(tagType: Int) = Array(tagType.toByte)
+  def tag(tagType: Int) = {
+    log("tag(%d)" format tagType)
+    Array(tagType.toByte)
+  }
 
-  def endOfContent = Array(0.toByte)
-  def noValue = Array(1.toByte)
+  def endOfContent = {
+    log("endOfContent")
+    Array(0.toByte)
+  }
+  def noValue = {
+    log("noValue")
+    Array(1.toByte)
+  }
 
-  def sequence = Array(3.toByte)
+  def sequence: Array[Byte] = {
+    log("sequence")
+    Array(3.toByte)
+  }
 
-  def sequence[T <: TwpWritable](seq: Seq[T]): Array[Byte] =
-    seq.flatMap(_.write).flatten.toArray ++ endOfContent
+  def sequence[T <: TwpWritable](seq: Seq[T]): Array[Byte] = {
+    logw(seq.toString)
+    this.sequence ++ (seq.flatMap(_.write).flatten.toArray ++ endOfContent)
+  }
 
   def message(id: Int): Array[Byte] = {
-    if (id >= 0 && id <= 7) (4 + id).getBytes(1)
-    else { // send extension
+    if (id >= 0 && id <= 7) {
+      logw("message(%d) (%d)" format (id,  id + 4))
+      (4 + id).getBytes(1)
+    } else { // send extension
+      logw("extension(%d)" format id)
       12.getBytes(1) ++ id.getBytes()
     }
   }
 
-  def shortInt(i: Int) = tag(13) ++ i.getBytes(1)
-  def longInt(i: Int) = tag(14) ++ i.getBytes(4)
+  def shortInt(i: Int) = {
+    logw("shortInt(%d)" format i)
+    tag(13) ++ i.getBytes(1)
+  }
+  def longInt(i: Int) = {
+    logw("longInt(%d)" format i)
+    tag(14) ++ i.getBytes(4)
+  }
 
   def someInt(i: Int) = if (i >= 256) longInt(i) else shortInt(i)
 
   def string(str: String): Array[Byte] = {
+    logw("String(%s)" format str)
     val data = str.getBytes("UTF-8")
     val (msgTag, prefix) =
       if (data.size <= 109) tag(17 + data.size) -> Array[Byte]()
@@ -319,11 +385,15 @@ trait TwpWriter extends ByteOperations {
   }
 
   def binary(data: Array[Byte]): Array[Byte] = {
+    logw("binary(%s)" format data.toString)
     val (msgTag, prefix) =
       if (data.size <= 0xFF) tag(15) -> data.size.getBytes(1)
       else tag(16) -> data.size.getBytes(4)
     msgTag ++ prefix ++ data
   }
 
-  def nop = new Array[Byte](0)
+  def nop = {
+    log("nop")
+    new Array[Byte](0)
+  }
 }
