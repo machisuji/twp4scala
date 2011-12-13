@@ -198,7 +198,7 @@ case class SequenceDefinition(val `type`: Type, val identifier: Identifier) exte
     val name = identifier.toScala.mkString
     "type %s = Seq[%s]".format(name, `type`.toScala.mkString) ::
     "object %s extends TwpReader with TwpConversions {".format(name) ::
-      "def in(implicit in: Input) = sequence[%s]".format(name) ::
+    "  def in(implicit in: Input) = sequence[%s]".format(name) ::
     "}" :: Nil
   }
 }
