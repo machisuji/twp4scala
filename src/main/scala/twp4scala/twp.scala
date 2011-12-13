@@ -224,7 +224,10 @@ trait TwpReader extends ByteOperations {
     expect(expected.head.toInt, msg)(in)
 
   def message(implicit in: Input) = {
-    in.read - 4
+    val res = in.read
+    if (res >= 0 && res <= 11) res - 4
+    else if (res == 12) in.take(4).toInt // extension msg
+    else throw new RuntimeException("Expected message/extension, got: " + res)
   }
 
   def string(implicit in: Input) = in.read match {
@@ -279,13 +282,18 @@ trait TwpWriter extends ByteOperations {
 
   def endOfContent = Array(0.toByte)
   def noValue = Array(1.toByte)
-  
+
   def sequence = Array(3.toByte)
-  
+
   def sequence[T <: TwpWritable](seq: Seq[T]): Array[Byte] =
     seq.flatMap(_.write).flatten.toArray ++ endOfContent
 
-  def message(id: Int): Array[Byte] = (4 + id).getBytes(1)
+  def message(id: Int): Array[Byte] = {
+    if (id >= 0 && id <= 7) (4 + id).getBytes(1)
+    else { // send extension
+      12.getBytes(1) ++ id.getBytes()
+    }
+  }
 
   def shortInt(i: Int) = tag(13) ++ i.getBytes(1)
   def longInt(i: Int) = tag(14) ++ i.getBytes(4)
