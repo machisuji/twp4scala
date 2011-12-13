@@ -20,6 +20,7 @@ sealed trait Tree {
   def print(out: java.io.Writer) = {
     val pw = new java.io.PrintWriter(out)
     toScala.foreach(pw.println)
+    pw.close
   }
   def print: Unit = print(System.out)
   
