@@ -141,7 +141,7 @@ trait StructCompanion[S <: Struct, T] extends MessageCompanion[S, T] {
 }
 
 class ErrorMessage(val failedMsgType: Int, val error: String) extends Message {
-  def write = ErrorMessage.tag.msg #:: failedMsgType #:: error #:: Output
+  def write = message(ErrorMessage.tag) #:: failedMsgType #:: error #:: Output
 }
 
 object ErrorMessage extends MessageCompanion[ErrorMessage, (Int, String)] {
@@ -179,6 +179,23 @@ trait TwpConversions extends TwpWriter {
   implicit def writeExplicitInt(i: Int) = new {
     def short = shortInt(i)
     def long = longInt(i)
+  }
+
+  implicit def writeAny(any: Any): Array[Byte] = any match {
+    case a: TwpWritable => a.write.reduceLeft(_ ++ _)
+    case i: Int => someInt(i)
+    case s: String => string(s)
+    case s: Seq[_] => {
+      if (!s.isEmpty) {
+        val head = s.head
+        head match {
+          case e: String => writeStringSequence(s.asInstanceOf[Seq[String]])
+          case e: TwpWritable => sequence(s.asInstanceOf[Seq[TwpWritable]])
+          case e => throw new IllegalStateException("Cannot write " + e + " of Seq " + s)
+        }
+      }
+    }
+    case _ => throw new IllegalStateException("Cannot write " + any)
   }
 }
 
@@ -244,6 +261,8 @@ trait TwpReader extends ByteOperations {
     in unread byte
     byte
   }
+
+  def any(implicit in: Input): Input = in
 
   /**
    * Checks whether the input starts with the given tag.
