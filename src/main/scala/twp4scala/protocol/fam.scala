@@ -1,12 +1,8 @@
 package twp4scala.protocol
 
 import twp4scala._
-import java.net.Socket
 
-package object fam extends TwpReader with TwpConversions {
-
-  type Path = Seq[String]
-  def path(implicit in: Input) = sequence[Path]
+object fam {
 
   trait FAM extends Protocol {
     def protocolId = 4
@@ -18,88 +14,60 @@ package object fam extends TwpReader with TwpConversions {
       def port = p
     }
 
-    def apply(s: Socket) = new SocketConnection with FAM with Server {
+    def apply(s: java.net.Socket) = new SocketConnection with FAM with Server {
       val socket = s
     }
   }
 
-  sealed trait Message extends twp4scala.Message // seal for pattern matching
+  sealed trait Message extends twp4scala.Message
 
-  class Changed(val path: Path, val fileName: String) extends Message {
-    def write = Changed.tag.msg #:: path #:: fileName #:: Output
+  type Path = Seq[String]
+  object Path extends TwpReader with TwpConversions {
+    def in(implicit in: Input) = sequence[Path]
+  }
+
+  class Changed(val directory: Path, val filename: String) extends Message {
+    def write = Changed.tag.msg #:: directory #:: filename #:: End
   }
   object Changed extends MessageCompanion[Changed, (Path, String)] {
     def tag = 0
     def apply(values: (Path, String)) = new Changed(values._1, values._2)
-    def read(implicit in: Input) = (path, string)
+    def read(implicit in: Input) = (Path.in, string)
   }
 
-  class Deleted(val path: Path, val fileName: String) extends Message {
-    def write = Changed.tag.msg #:: path #:: fileName #:: Output
+  class Deleted(val directory: Path, val filename: String) extends Message {
+    def write = Deleted.tag.msg #:: directory #:: filename #:: End
   }
   object Deleted extends MessageCompanion[Deleted, (Path, String)] {
     def tag = 1
     def apply(values: (Path, String)) = new Deleted(values._1, values._2)
-    def read(implicit in: Input) = (path, string)
+    def read(implicit in: Input) = (Path.in, string)
   }
 
-  class Created(val path: Path, val fileName: String) extends Message {
-    def write = Changed.tag.msg #:: path #:: fileName #:: Output
+  class Created(val directory: Path, val filename: String) extends Message {
+    def write = Created.tag.msg #:: directory #:: filename #:: End
   }
   object Created extends MessageCompanion[Created, (Path, String)] {
-    def tag = 0
+    def tag = 2
     def apply(values: (Path, String)) = new Created(values._1, values._2)
-    def read(implicit in: Input) = (path, string)
+    def read(implicit in: Input) = (Path.in, string)
   }
 
-  class StartExecuting(val path: Path, val fileName: String) extends Message {
-    def write = Changed.tag.msg #:: path #:: fileName #:: Output
+  class StartExecuting(val directory: Path, val filename: String) extends Message {
+    def write = StartExecuting.tag.msg #:: directory #:: filename #:: End
   }
   object StartExecuting extends MessageCompanion[StartExecuting, (Path, String)] {
-    def tag = 0
+    def tag = 3
     def apply(values: (Path, String)) = new StartExecuting(values._1, values._2)
-    def read(implicit in: Input) = (path, string)
+    def read(implicit in: Input) = (Path.in, string)
   }
 
-  class StopExecuting(val path: Path, val fileName: String) extends Message {
-    def write = Changed.tag.msg #:: path #:: fileName #:: Output
+  class StopExecuting(val directory: Path, val filename: String) extends Message {
+    def write = StopExecuting.tag.msg #:: directory #:: filename #:: End
   }
   object StopExecuting extends MessageCompanion[StopExecuting, (Path, String)] {
-    def tag = 0
+    def tag = 4
     def apply(values: (Path, String)) = new StopExecuting(values._1, values._2)
-    def read(implicit in: Input) = (path, string)
-  }
-  
-  class MyPath(val value: Path, val fileName: String) extends Struct {
-    def write = value #:: fileName #:: Output
-  }
-  object MyPath extends StructCompanion[MyPath, (Path, String)] {
-    def apply(values: (Path, String)) = new MyPath(values._1, values._2)
-    def read(implicit in: Input) = (path, string)
-  }
-
-  class Test(val path: MyPath, val fileName: String) extends Message {
-    def write = Test.tag.msg #:: path #:: fileName #:: Output
-  }
-  object Test extends MessageCompanion[Test, (MyPath, String)] {
-    def tag = 0
-    def apply(values: (MyPath, String)) = new Test(values._1, values._2)
-    def read(implicit in: Input) = (MyPath.in, string)
-  }
-  
-  class Ping extends Message {
-    def write = Ping.tag.msg #:: Output
-  }
-  object Ping extends Ping with EmptyMessageCompanion[Ping] {
-    def tag = 0
-  }
-
-  class Reply(val requestId: Int, val result: Any) extends Message {
-    def write = Reply.tag.msg #:: requestId #:: result #:: Output
-  }
-  object Reply extends MessageCompanion[Reply, (Int, Any)] {
-    def tag = 1
-    def apply(values: (Int, Any)) = new Reply(values._1, values._2)
-    def read(implicit in: Input) = (someInt, any)
+    def read(implicit in: Input) = (Path.in, string)
   }
 }
