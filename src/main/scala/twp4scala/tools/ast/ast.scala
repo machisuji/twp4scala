@@ -169,7 +169,11 @@ case class Identifier(aValue: String) extends Type {
   override def toScalaRead = value + ".in" :: Nil
 }
 
-case class AnyDefinedBy(val identifier: Identifier) extends Type
+case class AnyDefinedBy(val identifier: Identifier) extends Type {
+  override def toScala = "Any /* defined by %s */".format(identifier.value.decapitalize) :: Nil
+
+  override def toScalaRead = "any" :: Nil
+}
 
 case class StructDefinition(val identifier: Identifier, val number: Option[Int], val fields: List[Field])
   extends SpecificationElement with TypeDefinition with MessageSource {
