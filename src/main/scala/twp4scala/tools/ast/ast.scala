@@ -92,9 +92,11 @@ trait MessageSource { this: Tree =>
       if (field.optional) "Option[%s]".format(t)
       else t
     }.mkString(", ") + ")"
-    val applyBody = "new " + identifier.value + "(" + fields.zipWithIndex.map { case (field, index) =>
-      "values._" + (index + 1)
-    }.mkString(", ") + ")"
+    val applyBody =
+      if (fields.size == 1) "new %s(values)".format(identifier.value)
+      else ("new " + identifier.value + "(" + fields.zipWithIndex.map { case (field, index) =>
+        "values._" + (index + 1)
+      }.mkString(", ") + ")")
 
     lazy val nonEmptyMessage = (
       "object %s extends %sCompanion[%s, %s] {".format(identifier.value, superClass, identifier.value, typeTuple) ::
