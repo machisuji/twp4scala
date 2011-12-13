@@ -90,8 +90,16 @@ package object fam extends TwpReader with TwpConversions {
   class Ping extends Message {
     def write = Ping.tag.msg #:: Output
   }
-  
   object Ping extends Ping with EmptyMessageCompanion[Ping] {
     def tag = 0
+  }
+
+  class Reply(val requestId: Int, val result: Any) extends Message {
+    def write = Reply.tag.msg #:: requestId #:: result #:: Output
+  }
+  object Reply extends MessageCompanion[Reply, (Int, Any)] {
+    def tag = 1
+    def apply(values: (Int, Any)) = new Reply(values._1, values._2)
+    def read(implicit in: Input) = (someInt, any)
   }
 }
