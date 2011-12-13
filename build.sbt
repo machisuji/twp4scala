@@ -6,4 +6,4 @@ scalaVersion := "2.9.1"
 
 mainClass := Some("twp4scala.example.Hello")
 
-scalacOptions ++= Seq("-deprecation")
+scalacOptions ++= Seq("-deprecation", "-unchecked")
