@@ -62,8 +62,9 @@ case class Specification(val elements: List[SpecificationElement]) extends Tree 
 }
 case class Protocol(val identifier: Identifier, val id: Int, val elements: List[ProtocolElement]) extends SpecificationElement {
   override def toScala = {
-    "package twp4scala.protocol.%s {".format(identifier.value.toLowerCase) ::
-    "  import twp4scala._" ::
+    "import twp4scala._" ::
+    "" ::
+    "object %s extends TwpReader with TwpConversions {".format(identifier.value.toLowerCase) ::
     "" ::
     "  trait %s extends Protocol {".format(identifier.value) ::
     "    def protocolId = %d".format(id) ::
