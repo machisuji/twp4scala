@@ -107,7 +107,7 @@ trait MessageSource { this: Tree =>
         Nil)
 
     lazy val emptyMessage = (
-      "object %s extends Empty%sCompanion[%s] {".format(identifier.value, superClass, identifier.value) ::
+      "object %s extends %s with Empty%sCompanion[%s] {".format(identifier.value, identifier.value, superClass, identifier.value) ::
         tag.map(n => "  def tag = %d".format(n)).getOrElse(skip) ::
         "}" ::
         Nil)
