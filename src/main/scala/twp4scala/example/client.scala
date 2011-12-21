@@ -31,8 +31,7 @@ case class TfsClient() {
     tfs ! Request(1, "listdir", dir)
     tfs.in match {
       case Reply(rid, result: TwpAny) => {
-        val directories = result.values(0).asInstanceOf[Seq[String]]
-        val files = result.values(1).asInstanceOf[Seq[String]]
+        val (directories, files) = result.get[Seq[String], Seq[String]]
         ListResult(directories, files)
       }
       case in => default(in)
@@ -43,9 +42,7 @@ case class TfsClient() {
     tfs ! Request(1, "stat", StatParameters(dir, file))
     tfs.in match {
       case Reply(rid, result: TwpAny) => {
-        val size = result.values(0).asInstanceOf[Int]
-        val mtime = result.values(1).asInstanceOf[Int]
-        val atime = result.values(2).asInstanceOf[Int]
+        val (size, mtime, atime) = result.get[Int, Int, Int]
         StatResult(size, mtime, atime)
       }
       case in => default(in)
