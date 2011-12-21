@@ -180,28 +180,29 @@ object Tag extends TwpReader {
 }
 
 trait TwpConversions extends TwpWriter {
-  implicit def writeStringSequence(seq: Seq[String]): Array[Byte] = {
+  implicit protected def writeStringSequence(seq: Seq[String]): Array[Byte] = {
     logw("Seq[String]: " + seq.toString)
     sequence ++ seq.flatMap(string).toArray[Byte] ++ endOfContent
   }
-  implicit def writeString(str: String): Array[Byte] = string(str)
+  implicit protected def writeString(str: String): Array[Byte] = string(str)
   
-  implicit object stringReader extends SequenceReader[String, Seq[String]] {
+  implicit protected object stringReader extends SequenceReader[String, Seq[String]] {
     def map(in: Input) = string(in)
   }
   
-  implicit def writeMessage(tag: Int) = new {
+  implicit protected def writeMessage(tag: Int) = new {
     def msg = message(tag)
     def raw = tag.getBytes(1)
   }
   
-  implicit def writeInt(i: Int) = someInt(i)
-  implicit def writeExplicitInt(i: Int) = new {
+  implicit protected def writeInt(i: Int) = someInt(i)
+  implicit protected def writeExplicitInt(i: Int) = new {
     def short = shortInt(i)
     def long = longInt(i)
   }
 
-  implicit def writeAny(any: Any): Array[Byte] = any match {
+  implicit protected def writeAny(any: Any): Array[Byte] = any match {
+    case Raw(data) => data
     case a: TwpWritable => a.write.reduceLeft(_ ++ _)
     case i: Int => someInt(i)
     case s: String => string(s)
@@ -215,10 +216,13 @@ trait TwpConversions extends TwpWriter {
         }
       }
     }
+    case b: Array[Byte] => binary(b)
     case u: Unit => noValue
     case _ => throw new IllegalStateException("Cannot write " + any)
   }
 }
+
+case class Raw(val data: Array[Byte])
 
 trait SequenceReader[T, S >: Seq[T]] extends TwpReadable[S] with TwpReader {
   def map(in: Input): T
@@ -337,31 +341,31 @@ trait TwpReader extends ByteOperations {
 
 trait TwpWriter extends ByteOperations {
 
-  def tag(tagType: Int) = {
+  protected def tag(tagType: Int) = {
     log("tag(%d)" format tagType)
     Array(tagType.toByte)
   }
 
-  def endOfContent = {
+  protected def endOfContent = {
     log("endOfContent")
     Array(0.toByte)
   }
-  def noValue = {
+  protected def noValue = {
     log("noValue")
     Array(1.toByte)
   }
 
-  def sequence: Array[Byte] = {
+  protected def sequence: Array[Byte] = {
     log("sequence")
     Array(3.toByte)
   }
 
-  def sequence[T <: TwpWritable](seq: Seq[T]): Array[Byte] = {
+  protected def sequence[T <: TwpWritable](seq: Seq[T]): Array[Byte] = {
     logw(seq.toString)
     this.sequence ++ (seq.flatMap(_.write).flatten.toArray ++ endOfContent)
   }
 
-  def message(id: Int): Array[Byte] = {
+  protected def message(id: Int): Array[Byte] = {
     if (id >= 0 && id <= 7) {
       logw("message(%d) (%d)" format (id,  id + 4))
       (4 + id).getBytes(1)
@@ -371,18 +375,18 @@ trait TwpWriter extends ByteOperations {
     }
   }
 
-  def shortInt(i: Int) = {
+  protected def shortInt(i: Int) = {
     logw("shortInt(%d)" format i)
     tag(13) ++ i.getBytes(1)
   }
-  def longInt(i: Int) = {
+  protected def longInt(i: Int) = {
     logw("longInt(%d)" format i)
     tag(14) ++ i.getBytes(4)
   }
 
-  def someInt(i: Int) = if (i >= 256) longInt(i) else shortInt(i)
+  protected def someInt(i: Int) = if (i >= 256) longInt(i) else shortInt(i)
 
-  def string(str: String): Array[Byte] = {
+  protected def string(str: String): Array[Byte] = {
     logw("String(%s)" format str)
     val data = str.getBytes("UTF-8")
     val (msgTag, prefix) =
@@ -391,7 +395,7 @@ trait TwpWriter extends ByteOperations {
     msgTag ++ prefix ++ data
   }
 
-  def binary(data: Array[Byte]): Array[Byte] = {
+  protected def binary(data: Array[Byte]): Array[Byte] = {
     logw("binary(%s)" format data.toString)
     val (msgTag, prefix) =
       if (data.size <= 0xFF) tag(15) -> data.size.getBytes(1)
@@ -399,7 +403,7 @@ trait TwpWriter extends ByteOperations {
     msgTag ++ prefix ++ data
   }
 
-  def nop = {
+  protected def nop = {
     log("nop")
     new Array[Byte](0)
   }

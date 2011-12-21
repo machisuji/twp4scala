@@ -3,9 +3,9 @@ package twp4scala
 import java.io._
 
 trait ByteOperations {
-  implicit def richerInt(int: Int) = new RicherInt(int)
-  implicit def richByteArray(bytes: Array[Byte]) = new RichByteArray(bytes)
-  implicit def richInputStream(in: InputStream) = new RichInputStream(in)
+  implicit protected def richerInt(int: Int) = new RicherInt(int)
+  implicit protected def richByteArray(bytes: Array[Byte]) = new RichByteArray(bytes)
+  implicit protected def richInputStream(in: InputStream) = new RichInputStream(in)
 }
 
 class RicherInt(int: Int) {
