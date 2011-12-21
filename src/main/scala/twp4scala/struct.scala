@@ -28,6 +28,16 @@ class TwpAny(val values: Seq[Any]) extends TwpWriter with TwpConversions with Tw
   def write: Stream[Array[Byte]] = Array(2.toByte) #:: values.flatMap(writeAny).toArray #:: End
   
   override def toString = "TwpAny(" + values.toString() + ")"
+
+  def get[T] = values.head.asInstanceOf[T]
+  def get[T1, T2]: (T1, T2) = (values(0).asInstanceOf[T1], values(1).asInstanceOf[T2])
+  def get[T1, T2, T3]: (T1, T2, T3) =
+    (values(0).asInstanceOf[T1], values(1).asInstanceOf[T2], values(2).asInstanceOf[T3])
+  def get[T1, T2, T3, T4]: (T1, T2, T3, T4) =
+    (values(0).asInstanceOf[T1], values(1).asInstanceOf[T2], values(2).asInstanceOf[T3], values(3).asInstanceOf[T4])
+  def get[T1, T2, T3, T4, T5]: (T1, T2, T3, T4, T5) =
+    (values(0).asInstanceOf[T1], values(1).asInstanceOf[T2], values(2).asInstanceOf[T3],
+      values(3).asInstanceOf[T4], values(4).asInstanceOf[T5])
 }
 
 object TwpAny extends TwpReader with TwpConversions with TwpReadable[Any] {
