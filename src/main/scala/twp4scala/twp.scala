@@ -47,6 +47,13 @@ trait Protocol extends AbstractProtocol with TwpReader with TwpWriter {
   def shutdown = close
 
   def ! (msg: Message) {
+    if (Twp.debug) {
+      Twp.debug = false
+      val data = msg.write.map(_.mkString(" ")).mkString(" | ")
+      println("[INFO] Sending message: " + msg)
+      println("[INFO]                  " + data)
+      Twp.debug = true
+    }
     msg.write.foreach(out write)
     out write endOfContent
     out.flush
