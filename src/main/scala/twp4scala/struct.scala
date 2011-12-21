@@ -18,18 +18,14 @@ trait StructCompanion[S <: Struct, T] extends MessageCompanion[S, T] {
 }
 
 class TwpAny(val values: Seq[Any]) extends TwpWriter with TwpConversions with TwpWritable {
+  val End = Stream(Array(0.toByte))
+
   def map(names: Symbol*) = {
     val ns: Seq[(Symbol, Any)] = names.toSeq.zip(values)
     new DynamicStruct(Map[Symbol, Any](ns: _*))
   }
   
-  def write: Stream[Array[Byte]] = Array(2.toByte) #:: values.flatMap {
-    case any: TwpWritable => any.write
-    case str: String => string(str)
-    case num: Int => someInt(num)
-    case bin: Array[Byte] => binary(bin)
-    case idk => throw new IllegalStateException("Cannot write " + idk)
-  } #:: Output
+  def write: Stream[Array[Byte]] = Array(2.toByte) #:: values.flatMap(writeAny).toArray #:: End
   
   override def toString = "TwpAny(" + values.toString() + ")"
 }
