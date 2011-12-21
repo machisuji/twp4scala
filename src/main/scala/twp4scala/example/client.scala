@@ -27,7 +27,7 @@ case class TfsClient() {
 
   def tfs = TFS("www.dcl.hpi.uni-potsdam.de", 80)
 
-  def listdir(dir: Path): ListResult = Twp(tfs) { tfs =>
+  def listdir(dir: Path): ListResult = this get Twp(tfs) { tfs =>
     tfs ! Request(1, "listdir", dir)
     tfs.in match {
       case Reply(rid, result: TwpAny) => {
@@ -35,11 +35,11 @@ case class TfsClient() {
         val files = result.values(1).asInstanceOf[Seq[String]]
         ListResult(directories, files)
       }
-      case Tag(msg) => throw new IllegalStateException("Unexpected " + msg)
+      case in => default(in)
     }
-  }.right.get
+  }
 
-  def stat(dir: Path, file: String): StatResult = Twp(tfs) { tfs =>
+  def stat(dir: Path, file: String): StatResult = this get Twp(tfs) { tfs =>
     tfs ! Request(1, "stat", StatParameters(dir, file))
     tfs.in match {
       case Reply(rid, result: TwpAny) => {
@@ -48,6 +48,28 @@ case class TfsClient() {
         val atime = result.values(2).asInstanceOf[Int]
         StatResult(size, mtime, atime)
       }
+      case in => default(in)
     }
-  }.right.get
+  }
+
+  def mkdir(dir: Path): Unit = this get Twp(tfs) { tfs =>
+    tfs ! Request(0, "mkdir", dir)
+  }
+
+  def rmdir(dir: Path): Unit = this get Twp(tfs) { tfs =>
+    tfs ! Request(0, "rmdir", dir)
+  }
+
+  def remove(dir: Path, file: String): Unit = this get Twp(tfs) { tfs =>
+    tfs ! Request(0, "remove", TwpAny(dir, file))
+  }
+
+  protected def get[S](twpResult: Either[Exception, S]): S = {
+    val error = twpResult.left.toOption
+    error map {err => println(err); null.asInstanceOf[S]} getOrElse twpResult.right.get
+  }
+
+  protected def default(in: twp4scala.Input) = in match {
+    case Tag(msg) => throw new IllegalStateException("Unexpected tag " + msg)
+  }
 }
