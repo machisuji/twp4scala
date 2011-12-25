@@ -63,10 +63,11 @@ case class TfsClient() {
 
   protected def get[S](twpResult: Either[Exception, S]): S = {
     val error = twpResult.left.toOption
-    error map {err => println(err); null.asInstanceOf[S]} getOrElse twpResult.right.get
+    error map {err => println(err.getMessage); null.asInstanceOf[S]} getOrElse twpResult.right.get
   }
 
-  protected def default(in: twp4scala.Input) = in match {
-    case Tag(msg) => throw new IllegalStateException("Unexpected tag " + msg)
+  protected def default[T](in: twp4scala.Input): T = {
+    val tag = in.read
+    throw new IllegalStateException("Unexpected tag: " + tag)
   }
 }
