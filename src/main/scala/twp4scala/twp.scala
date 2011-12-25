@@ -26,9 +26,18 @@ object Twp {
   private[twp4scala] def log(msg: String) = {
     if (Twp.debug) println("[DEBUG] " + msg)
   }
+
+  private [twp4scala] val colors = Map(
+    'black -> 30, 'blue -> 34, 'yellow -> 33,
+    'cyan -> 36, 'green -> 32, 'magenta -> 35,
+    'red -> 31, 'white -> 37
+  )
+
+  private[twp4scala] def paint(msg: String, color: Symbol) =
+    "\033[0;%dm%s\033[0m" format (colors.get(color).getOrElse(37), msg)
 }
 
-import Twp.{logr, logw, log}
+import Twp.{logr, logw, log, paint}
 
 trait AbstractProtocol extends Connection {
   def initiate
@@ -50,8 +59,9 @@ trait Protocol extends AbstractProtocol with TwpReader with TwpWriter {
     if (Twp.debug) {
       Twp.debug = false
       val data = msg.write.map(_.mkString(" ")).mkString(" | ")
-      println("[INFO] Sending message: " + msg)
-      println("[INFO]                  " + data)
+      println("[DEBUG] Sending message: " + msg)
+      println("[DEBUG]                  " + "^(\\d+) \\|".r.replaceAllIn(data,
+        m => paint(m.group(1), 'green) + m.after(1)))
       Twp.debug = true
     }
     msg.write.foreach(out write)
