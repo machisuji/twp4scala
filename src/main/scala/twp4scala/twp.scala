@@ -214,7 +214,7 @@ trait TwpConversions extends TwpWriter {
           case e: TwpWritable => sequence(s.asInstanceOf[Seq[TwpWritable]])
           case e => throw new IllegalStateException("Cannot write " + e + " of Seq " + s)
         }
-      }
+      } else sequence(Nil)
     }
     case b: Array[Byte] => binary(b)
     case u: Unit => noValue
