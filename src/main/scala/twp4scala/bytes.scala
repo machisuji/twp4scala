@@ -36,6 +36,10 @@ class RichInputStream(in: InputStream) {
     data take read
   }
 
+  def drainWhile(p: Int=>Boolean): Int = {
+    Iterator.continually(in.read).takeWhile(p).foldLeft(0)(_ + _)
+  }
+
   protected def fill(buffer: Array[Byte], in: InputStream, offset: Int): Int = {
     val read = in.read(buffer, offset, buffer.size - offset)
     if (read == -1) offset
