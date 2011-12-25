@@ -46,8 +46,9 @@ object TwpAny extends TwpReader with TwpConversions with TwpReadable[Any] {
   
   def read(implicit in: Input): Any = {
     val seqReader = new SeqReader
-    val values = Iterator.continually(in.read).takeWhile(0 !=).flatMap { tag =>
+    val values = Iterator.continually(in.read).takeWhile(0 <).flatMap { tag =>
       if (tag == 1) None
+      else if (tag == 12) {in.drainWhile(0<); in.unread(0); None }
       else {
         if (tag != 2) in.unread(tag)
         Some(tag match {
