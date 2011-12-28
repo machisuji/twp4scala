@@ -183,10 +183,11 @@ class Tag(msg: Int)
 object Tag extends TwpReader {
   def apply(msg: Int) = new Tag(msg)
   def unapply(in: Input): Option[Int] = {
-    val msg = message(in)
+    val msg = in.read
     if (msg >= 0) Some(msg)
     else None
   }
+  def isDefinedAt(implicit in: Input): Boolean = true
 }
 
 trait TwpConversions extends TwpWriter {
