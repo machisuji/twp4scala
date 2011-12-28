@@ -22,6 +22,16 @@ object Hello extends App {
   }
 }
 
+object TfsClient {
+  def forHPI = {
+    import org.xbill.DNS._
+    val records = new Lookup("tfs.dcl.hpi.uni-potsdam.de", Type.SRV).run
+    records.headOption.map(_.asInstanceOf[SRVRecord]).map(srv =>
+      TfsClient(srv.getTarget.toString, srv.getPort)
+    ).getOrElse(throw new RuntimeException("DNS Lookup failed."))
+  }
+}
+
 case class TfsClient(val host: String = "www.dcl.hpi.uni-potsdam.de", val port: Int = 80) {
   import protocol.tfs._
 
