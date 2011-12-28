@@ -229,6 +229,7 @@ trait TwpConversions extends TwpWriter {
     }
     case b: Array[Byte] => binary(b)
     case u: Unit => noValue
+    case p: Product => new TwpAny(p.productIterator.toSeq).write.flatten.toArray
     case _ => throw new IllegalStateException("Cannot write " + any)
   }
 }
