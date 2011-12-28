@@ -108,7 +108,10 @@ case class TfsClient(val host: String = "www.dcl.hpi.uni-potsdam.de", val port: 
   }
 
   protected def default[T](in: twp4scala.Input): T = {
-    val tag = in.read
-    throw new IllegalStateException("Unexpected tag: " + tag)
+    val error = in match {
+      case ErrorMessage(msgType, error) => "Message (type " + msgType + ") failed: " + error
+      case Tag(tag) => "Unexpected tag: " + tag
+    }
+    throw new IllegalStateException(error)
   }
 }
