@@ -61,7 +61,7 @@ trait Protocol extends AbstractProtocol with TwpReader with TwpWriter {
       val data = msg.write.map(_.mkString(" ")).mkString(" | ")
       println("[DEBUG] Sending message: " + msg)
       println("[DEBUG]                  " + "^(\\d+) \\|".r.replaceAllIn(data,
-        m => paint(m.group(1), 'green) + m.after(1)))
+        m => paint(m.group(1), 'magenta) + " |") + " | " + paint("0", 'magenta))
       Twp.debug = true
     }
     msg.write.foreach(out write)
