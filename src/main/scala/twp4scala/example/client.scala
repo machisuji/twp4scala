@@ -83,6 +83,20 @@ case class TfsClient(val host: String = "www.dcl.hpi.uni-potsdam.de", val port: 
 
   def remove(dir: Path, file: String) = perform (_ ! Request(0, "remove", (dir, file)))
 
+  def monitor(dir: Path, recursive: Boolean, host: String, port: Int): Long = perform { tfs =>
+    val addr = java.net.InetAddress.getByName(host).getAddress
+    val rec = if (recursive) 1 else 0
+    tfs ! Request(1, "monitor", (dir, rec, addr, port.asInstanceOf[Long]))
+    tfs.in match {
+      case Reply(rid, handle: Int) => handle.asInstanceOf[Long]
+      case in => default(in)
+    }
+  }
+
+  def stopMonitoring(handle: Long): Unit = perform { tfs =>
+    tfs ! Request(0, "stop_monitoring", handle)
+  }
+
   protected def perform[S](io: (TFS => S)) = get(Twp(tfs)(io))
 
   protected def get[S](twpResult: Either[Exception, S]): S = {
