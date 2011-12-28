@@ -25,12 +25,14 @@ object Hello extends App {
 case class TfsClient(val host: String = "www.dcl.hpi.uni-potsdam.de", val port: Int = 80) {
   import protocol.tfs._
 
-  def tfs = TFS(host, port)
+  val connection = new PersistentConnection[TFS] {
+    def open = TFS(host, port)
+  }
 
   /**
    * @param mode 0 - read | 1 - write | 2 - write (append)
    */
-  def open(dir: Path, file: String, mode: Int) = perform { tfs =>
+  def open(dir: Path, file: String, mode: Int) = connection.get { tfs =>
     tfs ! Request(1, "open", (dir, file, mode))
     tfs.in match {
       case Reply(rid, handle: Int) => handle.asInstanceOf[Long]
@@ -38,9 +40,9 @@ case class TfsClient(val host: String = "www.dcl.hpi.uni-potsdam.de", val port: 
     }
   }
 
-  def close(handle: Long): Unit = perform (_ ! Request(0, "close", handle))
+  def close(handle: Long): Unit = connection.get (_ ! Request(0, "close", handle))
 
-  def read(handle: Long, length: Int): Array[Byte] = this get Twp(tfs) { tfs =>
+  def read(handle: Long, length: Int): Array[Byte] = connection.get { tfs =>
     tfs ! Request(1, "read", (handle, length))
     tfs.in match {
       case Reply(rid, data: Array[Byte]) => data
@@ -48,15 +50,15 @@ case class TfsClient(val host: String = "www.dcl.hpi.uni-potsdam.de", val port: 
     }
   }
 
-  def write(handle: Long, data: Array[Byte]): Unit = perform { tfs =>
+  def write(handle: Long, data: Array[Byte]): Unit = connection.get { tfs =>
     tfs ! Request(0, "write", (handle, data))
   }
 
-  def seek(handle: Long, offset: Long): Unit = perform { tfs =>
+  def seek(handle: Long, offset: Long): Unit = connection.get { tfs =>
     tfs ! Request(0, "seek", (handle, offset))
   }
 
-  def listdir(dir: Path): ListResult = perform { tfs =>
+  def listdir(dir: Path): ListResult = connection.get { tfs =>
     tfs ! Request(1, "listdir", dir)
     tfs.in match {
       case Reply(rid, result: TwpAny) => {
@@ -67,7 +69,7 @@ case class TfsClient(val host: String = "www.dcl.hpi.uni-potsdam.de", val port: 
     }
   }
 
-  def stat(dir: Path, file: String): StatResult = perform { tfs =>
+  def stat(dir: Path, file: String): StatResult = connection.get { tfs =>
     tfs ! Request(1, "stat", StatParameters(dir, file))
     tfs.in match {
       case Reply(rid, result: TwpAny) => {
@@ -78,12 +80,12 @@ case class TfsClient(val host: String = "www.dcl.hpi.uni-potsdam.de", val port: 
     }
   }
 
-  def mkdir(dir: Path) = perform (_ ! Request(0, "mkdir", dir))
-  def rmdir(dir: Path) = perform (_ ! Request(0, "rmdir", dir))
+  def mkdir(dir: Path) = connection.get (_ ! Request(0, "mkdir", dir))
+  def rmdir(dir: Path) = connection.get (_ ! Request(0, "rmdir", dir))
 
-  def remove(dir: Path, file: String) = perform (_ ! Request(0, "remove", (dir, file)))
+  def remove(dir: Path, file: String) = connection.get (_ ! Request(0, "remove", (dir, file)))
 
-  def monitor(dir: Path, recursive: Boolean, host: String, port: Int): Long = perform { tfs =>
+  def monitor(dir: Path, recursive: Boolean, host: String, port: Int): Long = connection.get { tfs =>
     val addr = java.net.InetAddress.getByName(host).getAddress
     val rec = if (recursive) 1 else 0
     tfs ! Request(1, "monitor", (dir, rec, addr, port.asInstanceOf[Long]))
@@ -93,18 +95,8 @@ case class TfsClient(val host: String = "www.dcl.hpi.uni-potsdam.de", val port: 
     }
   }
 
-  def stopMonitoring(handle: Long): Unit = perform { tfs =>
+  def stopMonitoring(handle: Long): Unit = connection.get { tfs =>
     tfs ! Request(0, "stop_monitoring", handle)
-  }
-
-  protected def perform[S](io: (TFS => S)) = get(Twp(tfs)(io))
-
-  protected def get[S](twpResult: Either[Exception, S]): S = {
-    val error = twpResult.left.toOption
-    error map { err =>
-      if (Twp.debug) err.printStackTrace();
-      else println(err.getMessage);
-      null.asInstanceOf[S]} getOrElse twpResult.right.get
   }
 
   protected def default[T](in: twp4scala.Input): T = {
