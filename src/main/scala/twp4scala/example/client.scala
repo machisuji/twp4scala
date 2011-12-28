@@ -22,12 +22,41 @@ object Hello extends App {
   }
 }
 
-case class TfsClient() {
+case class TfsClient(val host: String = "www.dcl.hpi.uni-potsdam.de", val port: Int = 80) {
   import protocol.tfs._
 
-  def tfs = TFS("www.dcl.hpi.uni-potsdam.de", 80)
+  def tfs = TFS(host, port)
 
-  def listdir(dir: Path): ListResult = this get Twp(tfs) { tfs =>
+  /**
+   * @param mode 0 - read | 1 - write | 2 - write (append)
+   */
+  def open(dir: Path, file: String, mode: Int) = perform { tfs =>
+    tfs ! Request(1, "open", (dir, file, mode))
+    tfs.in match {
+      case Reply(rid, handle: Int) => handle.asInstanceOf[Long]
+      case in => default(in)
+    }
+  }
+
+  def close(handle: Long): Unit = perform (_ ! Request(0, "close", handle))
+
+  def read(handle: Long, length: Int): Array[Byte] = this get Twp(tfs) { tfs =>
+    tfs ! Request(1, "read", (handle, length))
+    tfs.in match {
+      case Reply(rid, data: Array[Byte]) => data
+      case in => default(in)
+    }
+  }
+
+  def write(handle: Long, data: Array[Byte]): Unit = perform { tfs =>
+    tfs ! Request(0, "write", (handle, data))
+  }
+
+  def seek(handle: Long, offset: Long): Unit = perform { tfs =>
+    tfs ! Request(0, "seek", (handle, offset))
+  }
+
+  def listdir(dir: Path): ListResult = perform { tfs =>
     tfs ! Request(1, "listdir", dir)
     tfs.in match {
       case Reply(rid, result: TwpAny) => {
@@ -38,7 +67,7 @@ case class TfsClient() {
     }
   }
 
-  def stat(dir: Path, file: String): StatResult = this get Twp(tfs) { tfs =>
+  def stat(dir: Path, file: String): StatResult = perform { tfs =>
     tfs ! Request(1, "stat", StatParameters(dir, file))
     tfs.in match {
       case Reply(rid, result: TwpAny) => {
@@ -49,21 +78,19 @@ case class TfsClient() {
     }
   }
 
-  def mkdir(dir: Path): Unit = this get Twp(tfs) { tfs =>
-    tfs ! Request(0, "mkdir", dir)
-  }
+  def mkdir(dir: Path) = perform (_ ! Request(0, "mkdir", dir))
+  def rmdir(dir: Path) = perform (_ ! Request(0, "rmdir", dir))
 
-  def rmdir(dir: Path): Unit = this get Twp(tfs) { tfs =>
-    tfs ! Request(0, "rmdir", dir)
-  }
+  def remove(dir: Path, file: String) = perform (_ ! Request(0, "remove", (dir, file)))
 
-  def remove(dir: Path, file: String): Unit = this get Twp(tfs) { tfs =>
-    tfs ! Request(0, "remove", TwpAny(dir, file))
-  }
+  protected def perform[S](io: (TFS => S)) = get(Twp(tfs)(io))
 
   protected def get[S](twpResult: Either[Exception, S]): S = {
     val error = twpResult.left.toOption
-    error map {err => println(err.getMessage); null.asInstanceOf[S]} getOrElse twpResult.right.get
+    error map { err =>
+      if (Twp.debug) err.printStackTrace();
+      else println(err.getMessage);
+      null.asInstanceOf[S]} getOrElse twpResult.right.get
   }
 
   protected def default[T](in: twp4scala.Input): T = {
