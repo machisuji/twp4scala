@@ -215,6 +215,7 @@ trait TwpConversions extends TwpWriter {
     case Raw(data) => data
     case a: TwpWritable => a.write.reduceLeft(_ ++ _)
     case i: Int => someInt(i)
+    case l: Long => longInt(l.asInstanceOf[Int])
     case s: String => string(s)
     case s: Seq[_] => {
       if (!s.isEmpty) {
