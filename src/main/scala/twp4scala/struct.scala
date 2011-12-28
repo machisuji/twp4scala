@@ -73,7 +73,7 @@ object TwpAny extends TwpReader with TwpConversions with TwpReadable[Any] {
     }.toSeq
     if (values.size == 0) Unit
     else if (values.size == 1) {
-      if (values.head.isInstanceOf[TwpAny]) in.unread(0)
+      in.unread(0)
       values.head
     }
     else new TwpAny(values)
