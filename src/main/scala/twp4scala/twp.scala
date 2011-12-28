@@ -128,7 +128,7 @@ trait MessageCompanion[S <: Message, T] extends TwpReader with TwpWriter with Tw
    * That is all read bytes must be pushed back in that case.
    */
   def isDefinedAt(implicit in: Input): Boolean =
-    Some(message).filter(tag !=).map(in.unread).map(_ => false) getOrElse true
+    Some(message(in, failSilently = true)).filter(tag !=).map(in.unread).map(_ => false) getOrElse true
 
   /**
    * Checks whether or not the Message has been completely read. Expected to throw an Exception if not.
@@ -155,7 +155,7 @@ trait EmptyMessageCompanion[S <: Message] extends TwpReader with TwpWriter with 
    * That is all read bytes must be pushed back in that case.
    */
   def isDefinedAt(implicit in: Input): Boolean =
-    Some(message).filter(tag !=).map(in.unread).map(_ => false) getOrElse true
+    Some(message(in, failSilently = true)).filter(tag !=).map(in.unread).map(_ => false) getOrElse true
 
   /**
    * Checks whether or not the Message has been completely read. Expected to throw an Exception if not.
@@ -268,17 +268,19 @@ trait TwpReader extends ByteOperations {
   def expect(expected: Array[Byte], msg: Option[String])(implicit in: Input): Int =
     expect(expected.head.toInt, msg)(in)
 
-  def message(implicit in: Input) = {
+  def message(implicit in: Input, failSilently: Boolean = false) = {
     val res = in.read
-    if (res >= 0 && res <= 11) {
+    if (res >= 4 && res <= 11) {
       val ret = res - 4
       logr("message " + ret); ret
     }
     else if (res == 12) {
       val ret = in.take(4).toInt
       logr("extension " + ret); ret
-    } 
-    else throw new RuntimeException("Expected message/extension, got: " + res)
+    } else if (failSilently) {
+      log("Expected to read message/extension, got: " + res)
+      res
+    } else throw new IllegalStateException("Expected to read message/extension, got: " + res)
   }
 
   def string(implicit in: Input) = in.read match {
