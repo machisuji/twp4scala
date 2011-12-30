@@ -1,0 +1,28 @@
+protocol Calculator = ID 5{
+  typedef Term;
+  sequence<Term> parameters;
+  struct Expression{
+    binary host; /* IPv4 or IPv6 address */
+    int port;
+    parameters arguments;
+  }
+
+  union Term{
+    case 0: double value;
+    case 1: Expression expr;
+  }
+
+  message Request = 0 {
+    int request_id;
+    parameters arguments;
+  }
+
+  message Reply = 1 {
+    int request_id;
+    double result;
+  }
+
+  message Error = 2{
+    string text;
+  }
+}
