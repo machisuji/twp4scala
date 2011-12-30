@@ -9,5 +9,6 @@ mainClass := Some("twp4scala.example.Hello")
 scalacOptions ++= Seq("-deprecation", "-unchecked")
 
 libraryDependencies ++= Seq(
-  "dnsjava" % "dnsjava"% "2.1.1"
+  "dnsjava" % "dnsjava"% "2.1.1",
+  "org.scalatest" %% "scalatest" % "1.6.1" % "test"
 )
