@@ -4,11 +4,18 @@ import scala.util.parsing.combinator.syntactical._
 import scala.util.parsing.combinator.{ImplicitConversions => Flatten}
 import twp4scala.tools.ast._
 
-object TDL extends StandardTokenParsers with RegexParsers with Flatten {
+class TDL(
+  val applicationTypes: Map[String, ApplicationType[_]]
+) extends StandardTokenParsers with RegexParsers with ApplicationTypes with Flatten {
 
-  lexical.delimiters ++= List("{", "}", ";", "=", "<", ">")
+  def this(appTypes: Iterable[ApplicationType[_]]) = this(Map(appTypes.toSeq.map(at => at.tdlName -> at): _*))
+
+  lexical.delimiters ++= List("{", "}", ":", ";", "=", "<", ">")
   lexical.reserved += ("int", "string", "binary", "any", "defined", "by", "struct",
     "optional", "sequence", "union", "case", "typedef", "message", "protocol", "ID")
+
+  require(applicationTypes.keySet.intersect(lexical.reserved).isEmpty, "Application Type name reserved")
+  applicationTypes.keys.foreach(lexical.reserved +=)
 
   def identifier = guard(ident) ~>
     regex("\\w+", error = "Identifier expected but ':token' found.") ^^ (Identifier)
@@ -19,6 +26,7 @@ object TDL extends StandardTokenParsers with RegexParsers with Flatten {
       "any" ~ "defined" ~ "by" ~> identifier ^^ (AnyDefinedBy)
     | identifier
     | primitiveType
+    | applicationType
   )
   def primitiveType: Parser[PrimitiveType] = (
       "int"     ^^ (_ => IntType)
@@ -26,6 +34,13 @@ object TDL extends StandardTokenParsers with RegexParsers with Flatten {
     | "binary"  ^^ (_ => BinaryType)
     | "any"     ^^ (_ => AnyType)
   )
+
+  def applicationType: Parser[ApplicationType[_]] = {
+    applicationTypes.keys.foldRight(nothing) { case (name, parser) =>
+      val appType: Parser[ApplicationType[_]] = name ^^ (applicationTypes.apply)
+      parser | appType
+    }
+  }
 
   def typedef: Parser[TypeDefinition] = structdef | sequencedef | uniondef | forwarddef
 
@@ -54,3 +69,5 @@ object TDL extends StandardTokenParsers with RegexParsers with Flatten {
   def parseAll[T](p: Parser[T], in: String): ParseResult[T] = phrase(p)(new lexical.Scanner(in))
   def parseFile[T](p: Parser[T], file: String): ParseResult[T] = parseAll(p, io.Source.fromFile(file).mkString)
 }
+
+object TDL extends TDL(Map[String, ApplicationType[_]]())

@@ -55,6 +55,17 @@ sealed trait Type extends Tree with Readable with Writable {
   def toScalaRead: List[String] = toString :: Nil
 }
 sealed trait PrimitiveType extends Type
+
+abstract class ApplicationType[T](val tdlName: String)(implicit ev$1: scala.reflect.Manifest[T]) extends Type {
+  override def toScalaWrite: List[String] = List("(\""+tdlName+"\" @: %s)")
+  override def toScalaRead: List[String] = List("@:[%s](%s)" format (scalaTypeName, tdlName))
+
+  val scalaTypeName = ev$1.toString
+
+  def read(in: twp4scala.Input): T
+  def write: Array[Byte]
+}
+
 sealed trait TypeDefinition extends ProtocolElement
 
 case class Specification(val elements: List[SpecificationElement]) extends Tree {

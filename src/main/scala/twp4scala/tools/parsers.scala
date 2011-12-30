@@ -1,5 +1,6 @@
 package twp4scala.tools
 
+import ast.ApplicationType
 import scala.util.parsing.combinator.syntactical._
 import scala.util.matching.Regex
 
@@ -16,7 +17,6 @@ trait RegexParsers { this: TokenParsers =>
     }
   }
 
-  
   implicit def regex(rgx: Regex) = new FullMatch(rgx, None)
 
   def regex(rgx: String, error: String = null) = {
@@ -24,3 +24,12 @@ trait RegexParsers { this: TokenParsers =>
     new FullMatch(rgx.r, errorMsg)
   }
 }
+
+trait ApplicationTypes { this: TokenParsers =>
+  class NoType extends Parser[ApplicationType[_]] {
+    def apply(in: Input) = Failure("nothing to see here", in)
+  }
+
+  def nothing: Parser[ApplicationType[_]] = new NoType
+}
+

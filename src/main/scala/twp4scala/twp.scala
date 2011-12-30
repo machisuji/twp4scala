@@ -400,6 +400,11 @@ trait TwpReader extends ByteOperations {
   }
 
   /**
+   * Read Application Type with the given name.
+   */
+  def @:[T](name: String)(implicit in: Input): T = null.asInstanceOf[T]
+
+  /**
    * Checks whether the input starts with the given tag.
    * If so, the tag is consumed and the method returns true.
    * If not, the tag is unread and the method returns false.
@@ -475,5 +480,9 @@ trait TwpWriter extends ByteOperations {
   protected def nop = {
     log("nop")
     new Array[Byte](0)
+  }
+
+  protected implicit def applicationType[T](value: T) = new {
+    def @:(name: String): Array[Byte] = Array()
   }
 }
