@@ -237,4 +237,6 @@ case class SequenceDefinition(val `type`: Type, val identifier: Identifier) exte
 }
 case class UnionDefinition(val identifier: Identifier, val caseDefinitions: List[CaseDefinition]) extends TypeDefinition
 case class CaseDefinition(val number: Int, `type`: Type, val identifier: Identifier)
-case class ForwardDefinition(val identifier: Identifier) extends TypeDefinition
+case class ForwardDefinition(val identifier: Identifier) extends TypeDefinition {
+  override def toScala = skip :: Nil // don't need that at all
+}
