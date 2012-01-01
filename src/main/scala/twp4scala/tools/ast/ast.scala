@@ -63,7 +63,21 @@ abstract class ApplicationType[T](val tdlName: String)(implicit ev$1: scala.refl
   val scalaTypeName = ev$1.toString
 
   def read(in: twp4scala.Input): T
-  def write: Array[Byte]
+  def write(value: T): Array[Byte]
+}
+
+object ApplicationType {
+  val registry: collection.mutable.Map[String, ApplicationType[_]] = new collection.mutable.HashMap[String, ApplicationType[_]]
+
+  def register(name: String, appType: ApplicationType[_]) {
+    registry += name -> appType
+  }
+
+  def unregister(name: String) {
+    registry -= name
+  }
+
+  def get(name: String) = registry(name)
 }
 
 sealed trait TypeDefinition extends ProtocolElement

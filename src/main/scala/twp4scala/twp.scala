@@ -3,6 +3,7 @@ package twp4scala
 import scala.Either
 import java.lang.IllegalStateException
 import java.io.IOException
+import tools.ast.ApplicationType
 
 object Twp {
   def apply[T <: AbstractProtocol, S](proto: T)(block: T => S): Either[Exception, S] = {
@@ -402,7 +403,7 @@ trait TwpReader extends ByteOperations {
   /**
    * Read Application Type with the given name.
    */
-  def @:[T](name: String)(implicit in: Input): T = null.asInstanceOf[T]
+  def @:[T](name: String)(implicit in: Input): T = ApplicationType.get(name).read(in).asInstanceOf[T]
 
   /**
    * Checks whether the input starts with the given tag.
@@ -483,6 +484,6 @@ trait TwpWriter extends ByteOperations {
   }
 
   protected implicit def applicationType[T](value: T) = new {
-    def @:(name: String): Array[Byte] = Array()
+    def @:(name: String): Array[Byte] = ApplicationType.get(name).asInstanceOf[ApplicationType[T]].write(value)
   }
 }
