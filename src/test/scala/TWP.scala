@@ -1,4 +1,5 @@
 import java.io.{ByteArrayInputStream, ByteArrayOutputStream, DataOutputStream, DataInputStream}
+import java.util.NoSuchElementException
 import org.scalatest.Spec
 import org.scalatest.matchers.ShouldMatchers
 import twp4scala.tools.ast.{ApplicationType}
@@ -9,7 +10,7 @@ class TWP extends Spec with ShouldMatchers {
 
   describe("ApplicationTypes") {
 
-    val doubleType = new ApplicationType[Double]("double") {
+    val doubleType = new ApplicationType[Double](160, "double") {
       def read(in: twp4scala.Input): Double = {
         new java.io.DataInputStream(in).readDouble
       }
@@ -37,7 +38,7 @@ class TWP extends Spec with ShouldMatchers {
         def read(implicit in: twp4scala.Input) = (string, @:[Double]("double"))
       }
       try {
-        ApplicationType.register("double", doubleType)
+        ApplicationType.register(doubleType)
         val op = Operation("add", 42)
         val inVal = Some(op.write).map { data =>
           val input = new java.io.PushbackInputStream(new ByteArrayInputStream(data.toArray.flatten))
@@ -48,7 +49,8 @@ class TWP extends Spec with ShouldMatchers {
         }.get
         op.value should equal (inVal)
       } finally {
-        ApplicationType.unregister("double")
+        ApplicationType.unregister(doubleType)
+        evaluating(Operation("fail", 1).write.toArray.flatten) should produce [NoSuchElementException] // since double's missing
       }
     }
   }

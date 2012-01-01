@@ -57,7 +57,13 @@ sealed trait Type extends Tree with Readable with Writable {
 }
 sealed trait PrimitiveType extends Type
 
-abstract class ApplicationType[T](val tdlName: String)(implicit ev$1: scala.reflect.Manifest[T]) extends Type {
+abstract class ApplicationType[T](
+  val tag: Int,
+  val tdlName: String
+)(implicit ev$1: scala.reflect.Manifest[T]) extends Type {
+
+  require(tag >= 160 && tag <= 255, "Application Type tags must be between 160 and 255")
+
   override def toScalaWrite: List[String] = List("(\""+tdlName+"\" @: %s)")
   override def toScalaRead: List[String] = List("@:[%s](%s)" format (scalaTypeName, tdlName))
 
@@ -68,17 +74,20 @@ abstract class ApplicationType[T](val tdlName: String)(implicit ev$1: scala.refl
 }
 
 object ApplicationType {
-  val registry: collection.mutable.Map[String, ApplicationType[_]] = new collection.mutable.HashMap[String, ApplicationType[_]]
+  val registry: collection.mutable.Map[String, ApplicationType[_]] =
+    new collection.mutable.HashMap[String, ApplicationType[_]]
 
-  def register(name: String, appType: ApplicationType[_]) {
-    registry += name -> appType
+  def register(appType: ApplicationType[_]) {
+    registry += appType.tdlName -> appType
   }
 
-  def unregister(name: String) {
-    registry -= name
-  }
+  def unregister(name: String): Unit = registry -= name
+  def unregister(tag: Int): Unit = registry.values.find(_.tag == tag).foreach(registry -= _.tdlName)
+  def unregister(appType: ApplicationType[_]): Unit = unregister(appType.tdlName)
 
   def get(name: String) = registry(name)
+  def get(tag: Int) = registry.values.find(_.tag == tag).getOrElse(
+    throw new IllegalArgumentException("No Application Type registered under tag "+tag))
 }
 
 sealed trait TypeDefinition extends ProtocolElement

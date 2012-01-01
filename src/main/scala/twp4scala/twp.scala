@@ -403,7 +403,13 @@ trait TwpReader extends ByteOperations {
   /**
    * Read Application Type with the given name.
    */
-  def @:[T](name: String)(implicit in: Input): T = ApplicationType.get(name).read(in).asInstanceOf[T]
+  def @:[T](name: String)(implicit in: Input): T = {
+    val appType = ApplicationType.get(name).asInstanceOf[ApplicationType[T]]
+    Some(tag).filter(appType.tag !=).foreach(tag =>
+      throw new RuntimeException("Expected Application Type "+appType.tag+", got " + tag))
+    in.take(4).toInt // discard size
+    appType.read(in)
+  }
 
   /**
    * Checks whether the input starts with the given tag.
@@ -484,6 +490,10 @@ trait TwpWriter extends ByteOperations {
   }
 
   protected implicit def applicationType[T](value: T) = new {
-    def @:(name: String): Array[Byte] = ApplicationType.get(name).asInstanceOf[ApplicationType[T]].write(value)
+    def @:(name: String): Array[Byte] = {
+      val appType = ApplicationType.get(name).asInstanceOf[ApplicationType[T]]
+      val data = appType.write(value)
+      appType.tag.getBytes(1) ++ data.size.getBytes() ++ data
+    }
   }
 }
