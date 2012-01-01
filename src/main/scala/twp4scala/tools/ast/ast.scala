@@ -38,7 +38,8 @@ sealed trait Tree {
 
   protected def snailToCamelCase(id: String) = "([\\w&&[^_]])_([\\w&&[^_]])".r.replaceAllIn(id,
     (m) => m.group(1) + m.group(2).toUpperCase)
-  
+
+  val skip = new String
 }
 
 trait Readable {
@@ -154,8 +155,6 @@ trait MessageSource { this: Tree =>
         fields.flatMap(field => field.toScalaWrite.appendLast(" #:: ")).mkString + "End"
       ) :: "}" :: Nil ++ (if (fields.isEmpty) emptyMessage else nonEmptyMessage)) filter (_ ne skip)
   }
-
-  private val skip = new String
 }
 
 case class MessageDefinition(val identifier: Identifier, val number: Int, val fields: List[Field])
