@@ -14,7 +14,7 @@ object Struct {
 trait StructCompanion[S <: Struct, T] extends MessageCompanion[S, T] {
   def tag = Struct.tag
   override def isDefinedAt(implicit in: Input) =
-    Some(message).filter(tag !=).map(in.unread).map(_ => false) getOrElse true
+    Some(tag(in)).filter(tag !=).map(in.unread).map(_ => false) getOrElse true
 }
 
 class TwpAny(val values: Seq[Any]) extends TwpWriter with TwpConversions with TwpWritable {
