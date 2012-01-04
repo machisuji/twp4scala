@@ -1,7 +1,11 @@
 package twp4scala.tools.ast
 
 import java.io.{FileWriter, PrintStream}
+import twp4scala.Twp
 
+object Tree {
+  val skip = new String("// skip")
+}
 
 sealed trait Tree {
   /**
@@ -13,7 +17,7 @@ sealed trait Tree {
   implicit def richerString(str: String) = new RicherString(str)
 
   protected def indent(depth: Int)(line: String): String =
-    if (line.isEmpty) line
+    if (line.isEmpty || (line eq skip)) line
     else new String(Iterator.fill(depth)(' ').toArray) + line
 
   def print(out: PrintStream): Unit = toScala.foreach(out.println)
@@ -23,7 +27,7 @@ sealed trait Tree {
     pw.close
   }
   def print: Unit = print(System.out)
-  
+
   def save(fileName: String) = print(new FileWriter(fileName))
 
   class RichStrList(list: List[String]) {
@@ -31,15 +35,16 @@ sealed trait Tree {
     def appendFirst(str: String): List[String] = (list.head + str) :: list.tail
     def appendLast(str: String): List[String] = list.init :+ (list.last + str)
   }
-  
+
   class RicherString(str: String) {
     def decapitalize = str.substring(0, 1).toLowerCase + str.substring(1)
+    def indentBy(depth: Int) = indent(depth)(str)
   }
 
   protected def snailToCamelCase(id: String) = "([\\w&&[^_]])_([\\w&&[^_]])".r.replaceAllIn(id,
     (m) => m.group(1) + m.group(2).toUpperCase)
 
-  val skip = new String
+  def skip = Tree.skip
 }
 
 trait Readable {
@@ -57,43 +62,10 @@ sealed trait Type extends Tree with Readable with Writable {
 }
 sealed trait PrimitiveType extends Type
 
-abstract class ApplicationType[T](
-  val tag: Int,
-  val tdlName: String
-)(implicit ev$1: scala.reflect.Manifest[T]) extends Type {
-
-  require(tag >= 160 && tag <= 255, "Application Type tags must be between 160 and 255")
-
-  override def toScalaWrite: List[String] = List("(\""+tdlName+"\" @: %s)")
-  override def toScalaRead: List[String] = List("@:[%s](%s)" format (scalaTypeName, tdlName))
-
-  val scalaTypeName = ev$1.toString
-
-  def read(in: twp4scala.Input): T
-  def write(value: T): Array[Byte]
-}
-
-object ApplicationType {
-  val registry: collection.mutable.Map[String, ApplicationType[_]] =
-    new collection.mutable.HashMap[String, ApplicationType[_]]
-
-  def register(appType: ApplicationType[_]) {
-    registry += appType.tdlName -> appType
-  }
-
-  def unregister(name: String): Unit = registry -= name
-  def unregister(tag: Int): Unit = registry.values.find(_.tag == tag).foreach(registry -= _.tdlName)
-  def unregister(appType: ApplicationType[_]): Unit = unregister(appType.tdlName)
-
-  def get(name: String) = registry(name)
-  def get(tag: Int) = registry.values.find(_.tag == tag).getOrElse(
-    throw new IllegalArgumentException("No Application Type registered under tag "+tag))
-}
-
 sealed trait TypeDefinition extends ProtocolElement
 
 case class Specification(val elements: List[SpecificationElement]) extends Tree {
-  override def toScala = elements.flatMap("" :: _.toScala)
+  override def toScala = elements.flatMap("" :: _.toScala).filter(skip ne)
 }
 case class Protocol(val identifier: Identifier, val id: Int, val elements: List[ProtocolElement]) extends SpecificationElement {
   override def toScala = {
@@ -124,14 +96,22 @@ case class Protocol(val identifier: Identifier, val id: Int, val elements: List[
 
 trait MessageSource { this: Tree =>
   val identifier: Identifier
-  def tag: Option[Int]
+  def optTag: Option[Int]
   val fields: List[Field]
   val superClass: String // Message | Struct
 
+  def writeMessage = ("def write = " +
+    "%s.tag%s #:: ".format(identifier.value, if (superClass != "Struct") ".msg" else ".raw") +
+    fields.flatMap(field => field.toScalaWrite.appendLast(" #:: ")).mkString + "End") :: Nil
+
+  def readMessage = {
+    val readTuple = Some("(" + fields.map(_.toScalaRead.head).mkString(", ") + ")").map(t =>
+      if (t contains ',') t else t.substring(1, t.size - 1)).get
+    "def read(implicit in: Input) = %s".format(readTuple) :: Nil
+  }
+
   override def toScala = {
     val typeTuple = Some("(" + fields.map(_.toScala.head.split(":").last.trim).mkString(", ") + ")").map(t =>
-      if (t contains ',') t else t.substring(1, t.size - 1)).get
-    val readTuple = Some("(" + fields.map(_.toScalaRead.head).mkString(", ") + ")").map(t =>
       if (t contains ',') t else t.substring(1, t.size - 1)).get
     val applySig = "values: (" + fields.map { field =>
       val t = field.`type`.toScala.mkString
@@ -146,23 +126,20 @@ trait MessageSource { this: Tree =>
 
     lazy val nonEmptyMessage = (
       "object %s extends %sCompanion[%s, %s] {".format(identifier.value, superClass, identifier.value, typeTuple) ::
-        tag.map(n => "  def tag = %d".format(n)).getOrElse(skip) ::
-        "  def apply(%s) = %s".format(if (fields.size > 0) applySig else "", applyBody) ::
-        "  def read(implicit in: Input) = %s".format(readTuple) ::
-        "}" ::
-        Nil)
+        optTag.map(n => "  def tag = %d".format(n)).getOrElse(skip) ::
+        "  def apply(%s) = %s".format(if (fields.size > 0) applySig else "", applyBody) :: Nil ++
+        readMessage.map(indent(2)) ++
+        ("}" :: Nil))
 
     lazy val emptyMessage = (
       "object %s extends %s with Empty%sCompanion[%s] {".format(identifier.value, identifier.value, superClass, identifier.value) ::
-        tag.map(n => "  def tag = %d".format(n)).getOrElse(skip) ::
+        optTag.map(n => "  def tag = %d".format(n)).getOrElse(skip) ::
         "}" ::
         Nil)
 
-    ("class %s(%s) extends %s {".format(identifier.value, fields.flatMap(_.toScala).mkString(", "), superClass) ::
-      ("  def write = " +
-        "%s.tag%s #:: ".format(identifier.value, if (superClass != "Struct") ".msg" else ".raw") +
-        fields.flatMap(field => field.toScalaWrite.appendLast(" #:: ")).mkString + "End"
-      ) :: "}" :: Nil ++ (if (fields.isEmpty) emptyMessage else nonEmptyMessage)) filter (_ ne skip)
+    ("class %s(%s) extends %s {".format(identifier.value, fields.flatMap(_.toScala).mkString(", "), superClass) :: Nil ++
+    writeMessage.map(indent(2)) ++
+    ("}" :: Nil) ++ (if (fields.isEmpty) emptyMessage else nonEmptyMessage)) filter (_ ne skip)
   }
 }
 
@@ -171,7 +148,7 @@ case class MessageDefinition(val identifier: Identifier, val number: Int, val fi
 
   val isExtension = !(0 to 7).contains(number)
   val superClass = "Message"
-  def tag = Some(number)
+  def optTag = Some(number)
 }
 
 case class Field(val optional: Boolean, val `type`: Type, val identifier: Identifier) extends Tree with Writable with Readable {
@@ -206,11 +183,56 @@ case object AnyType extends PrimitiveType {
   override def toScala = "AnyRef" :: Nil
 }
 
-case class Identifier(aValue: String) extends Type {
-  val value = snailToCamelCase(aValue).capitalize
+trait ApplicationType extends ProtocolElement with Type with MessageSource {
+  val tag: Int
+  val scalaTypeName: String
+  val enclosedTypeName: String
+
+  lazy val identifier = Identifier(scalaTypeName)
+  val superClass = "AppType"
+  lazy val optTag = Some(tag)
+  lazy val fields = List(Field(false, Identifier(enclosedTypeName), Identifier("value")))
+
+  override def readMessage =
+    "def read(implicit in: twp4scala.Input): %s = read((in, size) =>".format(enclosedTypeName) ::
+    "  throw new UnsupportedOperationException(\"Please implement me!\"))" :: Nil
+
+  override def writeMessage =
+    "def write = {" ::
+    "  val data: Array[Byte] = {throw new UnsupportedOperationException(\"Please implement me!\")}" ::
+    "  write(%s, data)".format(scalaTypeName) ::
+    "}" :: Nil
+
+  override def toString = "ApplicationType("+scalaTypeName+")"
+}
+
+object Identifier {
+  val defaultIdGuard = (id: String) => Some(new Tree {
+    val get = snailToCamelCase(id).capitalize
+  }.get)
+}
+
+case class Identifier(
+  tdlName: String,
+  idGuard: (String) => Option[String] = Identifier.defaultIdGuard
+) extends Type {
+  val value = {
+    val scalaId = idGuard(tdlName)
+    if (Twp.debug) {
+      scalaId.filter(tdlName !=).foreach(nid =>
+        println("[INFO] Renaming TDL identifier %s to %s" format (tdlName, nid)))
+    }
+    scalaId.getOrElse(
+      throw new RuntimeException("Invalid identifier: %s" format tdlName))
+  }
 
   override def toScala = value :: Nil
   override def toScalaRead = value + ".in" :: Nil
+
+  override def toString = {
+    val name = if (tdlName == value) tdlName else (tdlName + " -> " + value)
+    "Identifier(%s, %s)" format (name, idGuard.toString)
+  }
 }
 
 case class AnyDefinedBy(val identifier: Identifier) extends Type {
@@ -223,7 +245,7 @@ case class StructDefinition(val identifier: Identifier, val number: Option[Int],
   extends SpecificationElement with TypeDefinition with MessageSource {
 
   val superClass = "Struct"
-  def tag = number
+  def optTag = number
 }
 
 case class SequenceDefinition(val `type`: Type, val identifier: Identifier) extends TypeDefinition {

@@ -4,21 +4,29 @@ import scala.util.parsing.combinator.syntactical._
 import scala.util.parsing.combinator.{ImplicitConversions => Flatten}
 import twp4scala.tools.ast._
 
+/**
+ * Template Definition Language
+ *
+ * @param applicationTypes Types defined by the application
+ * @param identifierGuard A function taking two strings (Scala and TDL identifier respectively)
+ *                        and returning either a valid Scala identifier or Nothing, which will fail generation.
+ */
 class TDL(
-  val applicationTypes: Map[String, ApplicationType[_]]
+  val applicationTypes: Map[String, ApplicationType],
+  val identifierGuard: (String => Option[String]) = Identifier.defaultIdGuard
 ) extends StandardTokenParsers with RegexParsers with ApplicationTypes with Flatten {
-
-  def this(appTypes: Iterable[ApplicationType[_]]) = this(Map(appTypes.toSeq.map(at => at.tdlName -> at): _*))
 
   lexical.delimiters ++= List("{", "}", ":", ";", "=", "<", ">")
   lexical.reserved += ("int", "string", "binary", "any", "defined", "by", "struct",
     "optional", "sequence", "union", "case", "typedef", "message", "protocol", "ID")
 
+  applicationTypes.values.map(_.tag).foreach(tag =>
+    require(tag >= 160 && tag <= 255, "Application Type tags must be between 160 and 255"))
   require(applicationTypes.keySet.intersect(lexical.reserved).isEmpty, "Application Type name reserved")
   applicationTypes.keys.foreach(lexical.reserved +=)
 
   def identifier = guard(ident) ~>
-    regex("\\w+", error = "Identifier expected but ':token' found.") ^^ (Identifier)
+    regex("\\w+", error = "Identifier expected but ':token' found.") ^^ (Identifier(_, identifierGuard))
 
   def number = regex("\\d+", error = "Number expected but ':token' found.") ^^ (_.toInt)
 
@@ -35,12 +43,14 @@ class TDL(
     | "any"     ^^ (_ => AnyType)
   )
 
-  def applicationType: Parser[ApplicationType[_]] = {
-    applicationTypes.keys.foldRight(nothing) { case (name, parser) =>
-      val appType: Parser[ApplicationType[_]] = name ^^ (applicationTypes.apply)
+  def applicationType: Parser[Identifier] =
+    applicationTypes.keys.foldLeft(nothing[Identifier]) { case (parser, name) =>
+      val appType: Parser[Identifier] = name ^^ { name =>
+        val at = applicationTypes(name)
+        Identifier(at.scalaTypeName)
+      }
       parser | appType
     }
-  }
 
   def typedef: Parser[TypeDefinition] = structdef | sequencedef | uniondef | forwarddef
 
@@ -61,8 +71,13 @@ class TDL(
       ) ~ ("{" ~> rep(field) <~ "}") ^^ (MessageDefinition)
   def messageid = regex("[0-7]", "Expected protocol-specific number between 0 and 7 but found ':token'.")
 
-  def protocol = "protocol" ~> identifier ~ ("=" ~ "ID" ~> number <~ "{") ~ rep(protocolelement) <~ "}" ^^ (Protocol)
-  def protocolelement: Parser[ProtocolElement] = typedef | messagedef
+  def protocol = "protocol" ~> identifier ~ ("=" ~ "ID" ~> number <~
+    "{") ~ rep(protocolElement) <~ "}" ^^ { (id: Identifier, num: Int, elements: List[ProtocolElement]) =>
+      val leadingComment = Comment(" Application Types ")
+      val trailingComment = Comment(" End Application Types ")
+      Protocol(id, num, (leadingComment +: applicationTypes.values.toList :+ trailingComment) ++ elements)
+    }
+  def protocolElement: Parser[ProtocolElement] = typedef | messagedef
 
   def specification = rep(protocol | messagedef | structdef) ^^ (Specification)
 
@@ -70,4 +85,4 @@ class TDL(
   def parseFile[T](p: Parser[T], file: String): ParseResult[T] = parseAll(p, io.Source.fromFile(file).mkString)
 }
 
-object TDL extends TDL(Map[String, ApplicationType[_]]())
+object TDL extends TDL(Map[String, ApplicationType](), Identifier.defaultIdGuard)

@@ -221,6 +221,43 @@ trait EmptyMessageCompanion[S <: Message] extends TwpReader with TwpWriter with 
   implicit def in(implicit input: Input): S = apply()
 }
 
+trait AppType[T] extends Message {
+
+  val value: T
+
+  def write(appType: ApplicationType, data: Array[Byte]) =
+    Stream(appType.tag.getBytes(1) ++ data.size.getBytes() ++ data)
+
+  def get: T = value
+
+  def canEqual(obj: Any): Boolean = obj.isInstanceOf[AppType[_]]
+
+  override def equals(obj: Any): Boolean = obj match {
+    case other: AppType[_] if other.canEqual(this) => value == other.value
+    case _ => false
+  }
+
+  override def hashCode = 41 * value.hashCode
+}
+
+abstract class AppTypeCompanion[S <: AppType[T], T](
+  implicit ev$1: scala.reflect.Manifest[S],
+  ev$2: scala.reflect.Manifest[T]
+) extends MessageCompanion[S, T] with ApplicationType {
+  val scalaTypeName = ev$1.erasure.getSimpleName.split("\\$").last
+  val enclosedTypeName = ev$2.erasure.getSimpleName.split("\\$").last.capitalize // capitalize primitives
+
+  override def checkComplete(in: Input): Unit = ()
+
+  def read(reader: ((Input, Int) => T))(implicit in: Input): T = {
+    require(tag(in) == myTag, "Application Type %d expected".format(myTag))
+    val size = in.take(4).toInt
+    reader(in, size)
+  }
+
+  private lazy val myTag = this.asInstanceOf[ApplicationType].tag // otherwise ambiguous :(
+}
+
 class ErrorMessage(val failedMsgType: Int, val error: String) extends Message {
   def write = message(ErrorMessage.tag) #:: failedMsgType #:: error #:: Output
 }
@@ -233,7 +270,7 @@ object ErrorMessage extends MessageCompanion[ErrorMessage, (Int, String)] {
   def read(implicit in: Input) = (someInt, string)
 }
 
-class Tag(msg: Int)
+class Tag(val value: Int)
 
 object Tag extends TwpReader {
   def apply(msg: Int) = new Tag(msg)
@@ -251,16 +288,16 @@ trait TwpConversions extends TwpWriter {
     sequence ++ seq.flatMap(string).toArray[Byte] ++ endOfContent
   }
   implicit protected def writeString(str: String): Array[Byte] = string(str)
-  
+
   implicit protected object stringReader extends SequenceReader[String, Seq[String]] {
     def map(in: Input) = string(in)
   }
-  
+
   implicit protected def writeMessage(tag: Int) = new {
     def msg = message(tag)
     def raw = tag.getBytes(1)
   }
-  
+
   implicit protected def writeInt(i: Int) = someInt(i)
   implicit protected def writeExplicitInt(i: Int) = new {
     def short = shortInt(i)
@@ -294,7 +331,7 @@ case class Raw(val data: Array[Byte])
 
 trait SequenceReader[T, S >: Seq[T]] extends TwpReadable[S] with TwpReader {
   def map(in: Input): T
-  
+
   def read(implicit in: Input): S = readSequence(map)
 
   def readSequence[T](reader: (Input) => T)(implicit in: Input): Seq[T] = {

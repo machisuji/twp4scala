@@ -5,7 +5,7 @@ import scala.util.parsing.combinator.syntactical._
 import scala.util.matching.Regex
 
 trait RegexParsers { this: TokenParsers =>
-  
+
   class FullMatch(val regex: Regex, errorMsg: Option[String]) extends Parser[String] {
     def apply(in: Input) = {
       val text = in.first.chars
@@ -26,10 +26,10 @@ trait RegexParsers { this: TokenParsers =>
 }
 
 trait ApplicationTypes { this: TokenParsers =>
-  class NoType extends Parser[ApplicationType[_]] {
+  class NoType[T] extends Parser[T] {
     def apply(in: Input) = Failure("nothing to see here", in)
   }
 
-  def nothing: Parser[ApplicationType[_]] = new NoType
+  def nothing[T]: Parser[T] = new NoType
 }
 
