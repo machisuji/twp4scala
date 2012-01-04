@@ -183,10 +183,14 @@ case object AnyType extends PrimitiveType {
   override def toScala = "AnyRef" :: Nil
 }
 
-trait ApplicationType extends ProtocolElement with Type with MessageSource {
+case class ApplicationType[S, E](
   val tag: Int
-  val scalaTypeName: String
-  val enclosedTypeName: String
+)(implicit
+  ev$1: scala.reflect.Manifest[S],
+  ev$2: scala.reflect.Manifest[E]
+) extends ProtocolElement with Type with MessageSource {
+  val scalaTypeName = ev$1.erasure.getSimpleName.split("\\$").last
+  val enclosedTypeName = ev$2.erasure.getSimpleName.split("\\$").last.capitalize // capitalize primitives
 
   lazy val identifier = Identifier(scalaTypeName)
   val superClass = "AppType"

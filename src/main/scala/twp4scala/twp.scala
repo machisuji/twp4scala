@@ -225,7 +225,7 @@ trait AppType[T] extends Message {
 
   val value: T
 
-  def write(appType: ApplicationType, data: Array[Byte]) =
+  def write(appType: AppTypeCompanion[_, T], data: Array[Byte]) =
     Stream(appType.tag.getBytes(1) ++ data.size.getBytes() ++ data)
 
   def get: T = value
@@ -240,12 +240,7 @@ trait AppType[T] extends Message {
   override def hashCode = 41 * value.hashCode
 }
 
-abstract class AppTypeCompanion[S <: AppType[T], T](
-  implicit ev$1: scala.reflect.Manifest[S],
-  ev$2: scala.reflect.Manifest[T]
-) extends MessageCompanion[S, T] with ApplicationType {
-  val scalaTypeName = ev$1.erasure.getSimpleName.split("\\$").last
-  val enclosedTypeName = ev$2.erasure.getSimpleName.split("\\$").last.capitalize // capitalize primitives
+abstract class AppTypeCompanion[S <: AppType[T], T] extends MessageCompanion[S, T] {
 
   override def checkComplete(in: Input): Unit = ()
 
@@ -255,7 +250,7 @@ abstract class AppTypeCompanion[S <: AppType[T], T](
     reader(in, size)
   }
 
-  private lazy val myTag = this.asInstanceOf[ApplicationType].tag // otherwise ambiguous :(
+  private lazy val myTag = this.tag
 }
 
 class ErrorMessage(val failedMsgType: Int, val error: String) extends Message {

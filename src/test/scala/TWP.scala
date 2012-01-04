@@ -33,6 +33,8 @@ class TWP extends Spec with ShouldMatchers {
         def apply(value: Double) = new Float64(value)
         def read(implicit in: twp4scala.Input): Double = read((in, size) =>
           new java.io.DataInputStream(in).readDouble)
+
+        def getApplicationType = ApplicationType[Float64, Double](160)
       }
 
       class Operation(val name: String, val value: Float64) extends Struct {
@@ -45,7 +47,7 @@ class TWP extends Spec with ShouldMatchers {
     }
 
     it("should be successfully parsed in a field with a defined Application Type") {
-      val tdl = new TDL(Map("double" -> tcp.Float64))
+      val tdl = new TDL(Map("double" -> tcp.Float64.getApplicationType))
       val result = tdl.parseAll(tdl.field, "double value;")
       result.getOrElse(println("Parsing ApplicationType: " + result))
       result.successful should be (true)
@@ -66,7 +68,7 @@ class TWP extends Spec with ShouldMatchers {
     }
 
     it("should generate proper Code") {
-      val tdl = new TDL(Map("double" -> tcp.Float64))
+      val tdl = new TDL(Map("double" -> tcp.Float64.getApplicationType))
       val result = tdl.parseFile(tdl.specification, "tdl/tcp.tdl")
       result.successful should be (true)
     }
