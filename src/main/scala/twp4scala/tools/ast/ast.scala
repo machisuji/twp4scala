@@ -240,3 +240,7 @@ case class CaseDefinition(val number: Int, `type`: Type, val identifier: Identif
 case class ForwardDefinition(val identifier: Identifier) extends TypeDefinition {
   override def toScala = skip :: Nil // don't need that at all
 }
+
+case class Comment(val text: String) extends Tree with ProtocolElement with SpecificationElement {
+  override def toScala = List("/**" + text + "*/")
+}
