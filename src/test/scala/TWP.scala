@@ -34,7 +34,7 @@ class TWP extends Spec with ShouldMatchers {
         def read(implicit in: twp4scala.Input): Double = read((in, size) =>
           new java.io.DataInputStream(in).readDouble)
 
-        def getApplicationType = ApplicationType[Float64, Double](160)
+        def getApplicationType = ApplicationType[Double](160, "Float64")
       }
 
       class Operation(val name: String, val value: Float64) extends Struct {
@@ -71,6 +71,11 @@ class TWP extends Spec with ShouldMatchers {
       val tdl = new TDL(Map("double" -> tcp.Float64.getApplicationType))
       val result = tdl.parseFile(tdl.specification, "tdl/tcp.tdl")
       result.successful should be (true)
+      val code = result.get.toScala.mkString("\n")
+      code should include ("object tcp")
+      code should include ("class Float64")
+      code should include ("object Float64")
+      // actually I should simply try to compile it, though I shy at the additional dependency (scala-compiler.jar)
     }
   }
 

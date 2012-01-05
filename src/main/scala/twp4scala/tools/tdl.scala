@@ -12,7 +12,7 @@ import twp4scala.tools.ast._
  *                        and returning either a valid Scala identifier or Nothing, which will fail generation.
  */
 class TDL(
-  val applicationTypes: Map[String, ApplicationType[_, _]],
+  val applicationTypes: Map[String, ApplicationType[_]],
   val identifierGuard: (String => Option[String]) = Identifier.defaultIdGuard
 ) extends StandardTokenParsers with RegexParsers with ApplicationTypes with Flatten {
 
@@ -85,4 +85,4 @@ class TDL(
   def parseFile[T](p: Parser[T], file: String): ParseResult[T] = parseAll(p, io.Source.fromFile(file).mkString)
 }
 
-object TDL extends TDL(Map[String, ApplicationType[_, _]](), Identifier.defaultIdGuard)
+object TDL extends TDL(Map[String, ApplicationType[_]](), Identifier.defaultIdGuard)

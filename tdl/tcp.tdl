@@ -1,4 +1,4 @@
-protocol Calculator = ID 5{
+protocol TCP = ID 5{
   typedef Term;
   sequence<Term> parameters;
   struct Expression{

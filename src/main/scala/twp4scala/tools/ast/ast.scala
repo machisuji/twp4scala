@@ -183,14 +183,22 @@ case object AnyType extends PrimitiveType {
   override def toScala = "AnyRef" :: Nil
 }
 
-case class ApplicationType[S, E](
-  val tag: Int
-)(implicit
-  ev$1: scala.reflect.Manifest[S],
-  ev$2: scala.reflect.Manifest[E]
+/**
+ * ApplicationType declaration.
+ *
+ * @param tag The TWP tag for this type (must be between 160 and 255 (incl.))
+ * @param scalaTypeName The name of the generated Scala class
+ */
+case class ApplicationType[E](
+  val tag: Int,
+  val scalaTypeName: String
+)(
+  implicit ev$1: scala.reflect.Manifest[E]
 ) extends ProtocolElement with Type with MessageSource {
-  val scalaTypeName = ev$1.erasure.getSimpleName.split("\\$").last
-  val enclosedTypeName = ev$2.erasure.getSimpleName.split("\\$").last.capitalize // capitalize primitives
+
+  require(tag >= 160 && tag <= 255, "ApplicationType tags must lie between 160 and 255 (incl.).")
+
+  val enclosedTypeName = ev$1.erasure.getSimpleName.split("\\$").last.capitalize // capitalize primitives
 
   lazy val identifier = Identifier(scalaTypeName)
   val superClass = "AppType"
