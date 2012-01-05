@@ -15,14 +15,16 @@ class Unions extends Spec with ShouldMatchers {
     implicit object StringWitness extends File[String]
   }
 
-  describe("Parsing") {
-    def read[T: File](value: T) = value match {
-      case _: Seq[_] => "Path" // Path instead of Seq[_] would cause an erasure warning
-      case _: String => "String"
+  describe("Usage") {
+    it("should (only) be possible to pass (otherwise unrelated) types defined in the union") {
+      def read[T: File](value: T) = value match {
+        case _: Seq[_] => "Path" // Path instead of Seq[_] would cause an erasure warning
+        case _: String => "String"
+      }
+      read(Seq("/")) should equal ("Path")
+      read("/etc/hosts") should equal ("String")
+      // read(Seq(42)) and
+      // read(false) and everything else without the expected union types won't compile, yay!
     }
-    read(Seq("/")) should equal ("Path")
-    read("/etc/hosts") should equal ("String")
-    // read(Seq(42)) and
-    // read(false) and everything else without the expected union types won't compile, yay!
   }
 }
