@@ -3,7 +3,6 @@ package twp4scala
 import scala.Either
 import java.lang.IllegalStateException
 import java.io.IOException
-import tools.ast.ApplicationType
 
 object Twp {
   def apply[T <: AbstractProtocol, S](proto: T)(block: T => S): Either[Exception, S] = {
