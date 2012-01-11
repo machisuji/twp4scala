@@ -156,6 +156,7 @@ trait Server extends Protocol {
 
 trait TwpReadable[T] {
   def read(implicit in: Input): T
+  def isDefinedAt(implicit in: Input): Boolean
 }
 
 trait TwpWritable {
@@ -166,7 +167,9 @@ trait Message extends TwpWriter with TwpWritable with TwpConversions {
   val End: Stream[Array[Byte]] = Stream.empty
 }
 
-trait MessageCompanion[S <: Message, T] extends TwpReader with TwpWriter with TwpReadable[T] with TwpConversions {
+trait MessageCompanion[S <: Message, T] extends TwpReader
+    with TwpWriter with TwpReadable[T] with TwpConversions { self =>
+
   def unapply(in: Input): Option[T] = {
     if (isDefinedAt(in)) {
       val result = Some(read(in))
@@ -195,6 +198,11 @@ trait MessageCompanion[S <: Message, T] extends TwpReader with TwpWriter with Tw
 
   implicit def save(msg: S): Array[Byte] = msg.write.reduceLeft(_ ++ _)
   implicit def in(implicit input: Input): S = apply(read(input))
+
+  implicit val toReader: TwpReadable[S] = new TwpReadable[S] {
+    def read(implicit input: Input) = in
+    def isDefinedAt(implicit input: Input) = self.isDefinedAt
+  }
 }
 
 trait EmptyMessageCompanion[S <: Message] extends TwpReader with TwpWriter with TwpConversions { this: S =>
@@ -320,18 +328,81 @@ trait TwpConversions extends TwpWriter {
     case _ => throw new IllegalStateException("Cannot write " + any)
   }
 }
+object TwpConversions extends TwpConversions
 
-case class Raw(val data: Array[Byte])
+trait Preview {
+  def check(p: Int => Boolean)(implicit in: Input) =
+    Some(TwpReader.tag).filterNot(p).map(in.unread).map(_ => false) getOrElse true
+}
 
-trait SequenceReader[T, S >: Seq[T]] extends TwpReadable[S] with TwpReader {
-  def map(in: Input): T
+object Preview extends Preview
 
-  def read(implicit in: Input): S = readSequence(map)
-
-  def readSequence[T](reader: (Input) => T)(implicit in: Input): Seq[T] = {
-    expect(3, Some("Sequence"))
-    Iterator.continually(in.read).takeWhile(0 !=).map(in.unread).map(_ => reader(in)).toSeq
+object String {
+  def unapply(in: Input): Option[String] = {
+    val str = TwpReader.tryString(in)
+    str.left.foreach(in.unread)
+    str.right.toOption
   }
 }
 
-object TwpConversions extends TwpConversions
+object Int {
+  def unapply(in: Input): Option[Int] = {
+    val str = TwpReader.tryShortInt(in)
+    str.left.foreach(in.unread)
+    str.right.toOption
+  }
+}
+
+object Long {
+  def unapply(in: Input): Option[Long] = {
+    val str = TwpReader.tryLongInt(in)
+    str.left.foreach(in.unread)
+    str.right.toOption.map(_.asInstanceOf[Long])
+  }
+}
+
+object Binary {
+  def unapply(in: Input): Option[Array[Byte]] = {
+    val str = TwpReader.tryBinary(in)
+    str.left.foreach(in.unread)
+    str.right.toOption
+  }
+}
+
+case class Raw(val data: Array[Byte])
+
+trait SequenceReader[S <: Seq[T], T] extends TwpReadable[S] with TwpReader {
+  def map(in: Input): T
+  def canMap(in: Input): Boolean
+
+  def read(implicit in: Input): S = readSequence(map).asInstanceOf[S]
+
+  def isDefinedAt(implicit in: Input): Boolean = {
+    val tag = in.read
+    try {
+      tag == 3 && (Preview.check(0 ==) || canMap(in))
+    } finally {
+      in.unread(tag)
+    }
+  }
+
+  def readSequence[T](reader: (Input) => T)(implicit in: Input): Seq[T] = {
+    expect(3, Some("Sequence"))
+    Iterator.continually(in.read).takeWhile(0 !=).map(in.unread).map(_ => reader(in)).toList
+  }
+}
+
+abstract class SeqCompanion[S <: Seq[T], T](implicit elementReader: TwpReadable[T]) extends TwpReader with TwpConversions {
+
+  lazy val toReader: TwpReadable[S] = new TwpReadable[S] {
+    val reader: TwpReadable[Seq[T]] = seqReader(elementReader)
+    def isDefinedAt(implicit in: twp4scala.Input): Boolean = reader.isDefinedAt
+    def read(implicit in: twp4scala.Input): S = reader.read.asInstanceOf[S]
+  }
+
+  def in(implicit in: twp4scala.Input): S = toReader.read(in)
+
+  def unapplySeq(in: Input): Option[List[T]] =
+    if (toReader.isDefinedAt(in)) Some(toReader.read(in).toList)
+    else None
+}

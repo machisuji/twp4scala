@@ -22,14 +22,10 @@ object tfs {
   sealed trait Message extends twp4scala.Message
 
   type Path = Seq[String]
-  object Path extends TwpReader with TwpConversions {
-    def in(implicit in: Input) = sequence[Path]
-  }
+  object Path extends SeqCompanion[Path, String]
 
   type Filelist = Seq[String]
-  object Filelist extends TwpReader with TwpConversions {
-    def in(implicit in: Input) = sequence[Filelist]
-  }
+  object Filelist extends SeqCompanion[Filelist, String]
 
   class ListResult(val directories: Filelist, val files: Filelist) extends Struct {
     def write = ListResult.tag.msg #:: directories #:: files #:: End
