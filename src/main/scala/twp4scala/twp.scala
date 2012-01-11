@@ -285,11 +285,8 @@ object Tag extends TwpReader {
 }
 
 trait TwpConversions extends TwpWriter {
-  implicit def writeStringSequence(seq: Seq[String]): Array[Byte] = {
-    logw("Seq[String]: " + seq.toString)
-    sequence ++ seq.flatMap(string).toArray[Byte] ++ endOfContent
-  }
-  implicit def writeString(str: String): Array[Byte] = string(str)
+  implicit def writeA[T](value: T)(implicit writer: (T) => TwpWritable): Array[Byte] =
+    writer(value).write.flatten.toArray[Byte]
 
   implicit def writeSequence[T](seq: Seq[T])(implicit writer: (T) => TwpWritable): Array[Byte] =
     sequence ++ seq.map(writer).flatMap(_.write).flatten.toArray[Byte] ++ endOfContent
@@ -299,32 +296,9 @@ trait TwpConversions extends TwpWriter {
     def raw = tag.getBytes(1)
   }
 
-  implicit def writeInt(i: Int) = someInt(i)
   implicit def writeExplicitInt(i: Int) = new {
     def short = shortInt(i)
     def long = longInt(i)
-  }
-
-  implicit def writeAny(any: Any): Array[Byte] = any match {
-    case Raw(data) => data
-    case a: TwpWritable => a.write.reduceLeft(_ ++ _)
-    case i: Int => someInt(i)
-    case l: Long => longInt(l.asInstanceOf[Int])
-    case s: String => string(s)
-    case s: Seq[_] => {
-      if (!s.isEmpty) {
-        val head = s.head
-        head match {
-          case e: String => writeStringSequence(s.asInstanceOf[Seq[String]])
-          case e: TwpWritable => sequence(s.asInstanceOf[Seq[TwpWritable]])
-          case e => throw new IllegalStateException("Cannot write " + e + " of Seq " + s)
-        }
-      } else sequence(Nil)
-    }
-    case b: Array[Byte] => binary(b)
-    case u: Unit => noValue
-    case p: Product => new TwpAny(p.productIterator.toSeq).write.flatten.toArray
-    case _ => throw new IllegalStateException("Cannot write " + any)
   }
 }
 object TwpConversions extends TwpConversions

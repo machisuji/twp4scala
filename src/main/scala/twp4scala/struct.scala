@@ -28,7 +28,7 @@ class TwpAny(val values: Seq[Any], extensionId: Option[Int] = None) extends TwpW
   protected def writeId = extensionId.map(id =>
     Array(12.toByte, id.getBytes())).getOrElse(Array(2.toByte))
 
-  def write: Stream[Array[Byte]] = writeId #:: values.flatMap(writeAny).toArray #:: End
+  def write: Stream[Array[Byte]] = writeId #:: values.map(anyWriter).map(_.write).flatten #:: End
 
   override def toString = "TwpAny(" + values.toString() + ")"
 
