@@ -42,7 +42,7 @@ class TWP extends Spec with ShouldMatchers {
       }
       object Operation extends StructCompanion[Operation, (String, Float64)] {
         def apply(values: (String, Float64)) = new Operation(values._1, values._2)
-        def read(implicit in: twp4scala.Input) = (string, Float64.in)
+        def read(implicit input: twp4scala.Input) = (in[String], in[Float64])
       }
     }
 
