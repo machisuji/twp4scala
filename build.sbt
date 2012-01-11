@@ -6,7 +6,11 @@ scalaVersion := "2.9.1"
 
 mainClass := Some("twp4scala.example.Hello")
 
-scalacOptions ++= Seq("-deprecation", "-unchecked")
+scalacOptions ++= Seq(
+    "-deprecation"
+  , "-unchecked"
+  //, "-Xlog-implicits"
+)
 
 libraryDependencies ++= Seq(
   "dnsjava" % "dnsjava"% "2.1.1",
