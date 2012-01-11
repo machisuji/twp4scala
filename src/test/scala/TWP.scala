@@ -76,6 +76,7 @@ class TWP extends Spec with ShouldMatchers {
       code should include ("class Float64")
       code should include ("object Float64")
       // actually I should simply try to compile it, though I shy at the additional dependency (scala-compiler.jar)
+      // println(code)
     }
   }
 
