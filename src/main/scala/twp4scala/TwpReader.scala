@@ -106,3 +106,5 @@ trait TwpReader extends ByteOperations {
   def startsWith(tag: Int, in: Input): Boolean =
     Some(message(in)).filter(tag !=).map(in.unread).map(_ => false) getOrElse true
 }
+
+object TwpReader extends TwpReader
