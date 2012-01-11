@@ -278,28 +278,27 @@ object Tag extends TwpReader {
 }
 
 trait TwpConversions extends TwpWriter {
-  implicit protected def writeStringSequence(seq: Seq[String]): Array[Byte] = {
+  implicit def writeStringSequence(seq: Seq[String]): Array[Byte] = {
     logw("Seq[String]: " + seq.toString)
     sequence ++ seq.flatMap(string).toArray[Byte] ++ endOfContent
   }
-  implicit protected def writeString(str: String): Array[Byte] = string(str)
+  implicit def writeString(str: String): Array[Byte] = string(str)
 
-  implicit protected object stringReader extends SequenceReader[String, Seq[String]] {
-    def map(in: Input) = string(in)
-  }
+  implicit def writeSequence[T](seq: Seq[T])(implicit writer: (T) => TwpWritable): Array[Byte] =
+    sequence ++ seq.map(writer).flatMap(_.write).flatten.toArray[Byte] ++ endOfContent
 
-  implicit protected def writeMessage(tag: Int) = new {
+  implicit def writeMessage(tag: Int) = new {
     def msg = message(tag)
     def raw = tag.getBytes(1)
   }
 
-  implicit protected def writeInt(i: Int) = someInt(i)
-  implicit protected def writeExplicitInt(i: Int) = new {
+  implicit def writeInt(i: Int) = someInt(i)
+  implicit def writeExplicitInt(i: Int) = new {
     def short = shortInt(i)
     def long = longInt(i)
   }
 
-  implicit protected def writeAny(any: Any): Array[Byte] = any match {
+  implicit def writeAny(any: Any): Array[Byte] = any match {
     case Raw(data) => data
     case a: TwpWritable => a.write.reduceLeft(_ ++ _)
     case i: Int => someInt(i)
