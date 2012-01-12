@@ -59,7 +59,7 @@ trait TwpWriter extends ByteOperations {
   }
 
   def binary(data: Array[Byte]): Array[Byte] = {
-    logw("binary(%s)" format data.toString)
+    logw("binary(%s)" format data.mkString(" "))
     val (msgTag, prefix) =
       if (data.size <= 0xFF) tag(15) -> data.size.getBytes(1)
       else tag(16) -> data.size.getBytes(4)
