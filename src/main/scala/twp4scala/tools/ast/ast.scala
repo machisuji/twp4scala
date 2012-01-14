@@ -57,8 +57,8 @@ trait Writable {
 sealed trait SpecificationElement extends Tree
 sealed trait ProtocolElement extends Tree
 sealed trait Type extends Tree with Readable with Writable {
-  def toScalaWrite: List[String] = "%s" :: Nil
-  def toScalaRead: List[String] = toString :: Nil
+  def toScalaWrite: List[String] = "%s.out" :: Nil
+  def toScalaRead: List[String] = "in[%s]".format(toScala.mkString) :: Nil
 }
 sealed trait PrimitiveType extends Type
 
@@ -169,18 +169,15 @@ case class Field(val optional: Boolean, val `type`: Type, val identifier: Identi
 
 case object IntType extends PrimitiveType {
   override def toScala = "Int" :: Nil
-  override def toScalaRead = "someInt" :: Nil
 }
 case object StringType extends PrimitiveType {
   override def toScala = "String" :: Nil
-  override def toScalaRead = "string" :: Nil
 }
 case object BinaryType extends PrimitiveType {
   override def toScala = "Array[Byte]" :: Nil
-  override def toScalaRead = "binary" :: Nil
 }
 case object AnyType extends PrimitiveType {
-  override def toScala = "AnyRef" :: Nil
+  override def toScala = "Any" :: Nil
 }
 
 /**
