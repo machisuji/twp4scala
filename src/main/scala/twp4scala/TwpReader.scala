@@ -119,7 +119,7 @@ trait TwpReader extends ByteOperations {
   }
 
   def any(implicit in: Input): Any = {
-    val ret = TwpAny.read
+    val ret = Any.read
     logr("any " + ret.toString); ret
   }
 

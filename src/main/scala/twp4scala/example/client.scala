@@ -71,7 +71,7 @@ case class TfsClient(val host: String = "www.dcl.hpi.uni-potsdam.de", val port: 
   def listdir(dir: Path): ListResult = connection.get { tfs =>
     tfs ! Request(1, "listdir", dir)
     tfs.in match {
-      case Reply(rid, result: TwpAny) => {
+      case Reply(rid, result: LooseStruct) => {
         val (directories, files) = result.get[Seq[String], Seq[String]]
         ListResult(directories, files)
       }
@@ -82,7 +82,7 @@ case class TfsClient(val host: String = "www.dcl.hpi.uni-potsdam.de", val port: 
   def stat(dir: Path, file: String): StatResult = connection.get { tfs =>
     tfs ! Request(1, "stat", StatParameters(dir, file))
     tfs.in match {
-      case Reply(rid, result: TwpAny) => {
+      case Reply(rid, result: LooseStruct) => {
         val (size, mtime, atime) = result.get[Int, Int, Int]
         StatResult(size, mtime, atime)
       }

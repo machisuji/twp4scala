@@ -28,7 +28,7 @@ object tfs {
   object Filelist extends SeqCompanion[Filelist, String]
 
   class ListResult(val directories: Filelist, val files: Filelist) extends Struct {
-    def write = ListResult.tag.msg #:: directories #:: files #:: End
+    def write = ListResult.tag.msg #:: directories.out #:: files.out #:: End
   }
   object ListResult extends StructCompanion[ListResult, (Filelist, Filelist)] {
     def apply(values: (Filelist, Filelist)) = new ListResult(values._1, values._2)
@@ -36,7 +36,7 @@ object tfs {
   }
 
   class StatResult(val size: Int, val mtime: Int, val atime: Int) extends Struct {
-    def write = StatResult.tag.msg #:: size #:: mtime #:: atime #:: End
+    def write = StatResult.tag.msg #:: size.out #:: mtime.out #:: atime.out #:: End
   }
   object StatResult extends StructCompanion[StatResult, (Int, Int, Int)] {
     def apply(values: (Int, Int, Int)) = new StatResult(values._1, values._2, values._3)
@@ -44,7 +44,7 @@ object tfs {
   }
 
   class OpenParameters(val directory: Path, val file: String, val mode: Int) extends Struct {
-    def write = OpenParameters.tag.msg #:: directory #:: file #:: mode #:: End
+    def write = OpenParameters.tag.msg #:: directory.out #:: file.out #:: mode.out #:: End
   }
   object OpenParameters extends StructCompanion[OpenParameters, (Path, String, Int)] {
     def apply(values: (Path, String, Int)) = new OpenParameters(values._1, values._2, values._3)
@@ -52,7 +52,7 @@ object tfs {
   }
 
   class ReadParameters(val fh: Int, val count: Int) extends Struct {
-    def write = ReadParameters.tag.msg #:: fh #:: count #:: End
+    def write = ReadParameters.tag.msg #:: fh.out #:: count.out #:: End
   }
   object ReadParameters extends StructCompanion[ReadParameters, (Int, Int)] {
     def apply(values: (Int, Int)) = new ReadParameters(values._1, values._2)
@@ -60,7 +60,7 @@ object tfs {
   }
 
   class WriteParameters(val fh: Int, val data: Array[Byte]) extends Struct {
-    def write = WriteParameters.tag.msg #:: fh #:: data #:: End
+    def write = WriteParameters.tag.msg #:: fh.out #:: data.out #:: End
   }
   object WriteParameters extends StructCompanion[WriteParameters, (Int, Array[Byte])] {
     def apply(values: (Int, Array[Byte])) = new WriteParameters(values._1, values._2)
@@ -68,7 +68,7 @@ object tfs {
   }
 
   class SeekParameters(val fh: Int, val offset: Int) extends Struct {
-    def write = SeekParameters.tag.msg #:: fh #:: offset #:: End
+    def write = SeekParameters.tag.msg #:: fh.out #:: offset.out #:: End
   }
   object SeekParameters extends StructCompanion[SeekParameters, (Int, Int)] {
     def apply(values: (Int, Int)) = new SeekParameters(values._1, values._2)
@@ -76,7 +76,7 @@ object tfs {
   }
 
   class StatParameters(val directory: Path, val file: String) extends Struct {
-    def write = StatParameters.tag.raw #:: directory #:: file #:: End
+    def write = StatParameters.tag.raw #:: directory.out #:: file.out #:: End
   }
   object StatParameters extends StructCompanion[StatParameters, (Path, String)] {
     def apply(values: (Path, String)) = new StatParameters(values._1, values._2)
@@ -84,7 +84,7 @@ object tfs {
   }
 
   class RemoveParameters(val directory: Path, val file: String) extends Struct {
-    def write = RemoveParameters.tag.msg #:: directory #:: file #:: End
+    def write = RemoveParameters.tag.msg #:: directory.out #:: file.out #:: End
   }
   object RemoveParameters extends StructCompanion[RemoveParameters, (Path, String)] {
     def apply(values: (Path, String)) = new RemoveParameters(values._1, values._2)
@@ -92,7 +92,7 @@ object tfs {
   }
 
   class MonitorParameters(val directory: Path, val recursive: Int, val host: Array[Byte], val port: Int) extends Struct {
-    def write = MonitorParameters.tag.msg #:: directory #:: recursive #:: host #:: port #:: End
+    def write = MonitorParameters.tag.msg #:: directory.out #:: recursive.out #:: host.out #:: port.out #:: End
   }
   object MonitorParameters extends StructCompanion[MonitorParameters, (Path, Int, Array[Byte], Int)] {
     def apply(values: (Path, Int, Array[Byte], Int)) = new MonitorParameters(values._1, values._2, values._3, values._4)
@@ -100,7 +100,7 @@ object tfs {
   }
 
   class Request(val requestId: Int, val responseExpected: Int, val operation: String, val parameters: Any /* defined by operation */) extends Message {
-    def write = Request.tag.msg #:: requestId #:: responseExpected #:: operation #:: parameters #:: End
+    def write = Request.tag.msg #:: requestId.out #:: responseExpected.out #:: operation.out #:: parameters.out #:: End
   }
   object Request extends MessageCompanion[Request, (Int, Int, String, Any /* defined by operation */)] {
     def tag = 0
@@ -117,7 +117,7 @@ object tfs {
   }
 
   class Reply(val requestId: Int, val result: Any /* defined by requestId */) extends Message {
-    def write = Reply.tag.msg #:: requestId #:: result #:: End
+    def write = Reply.tag.msg #:: requestId.out #:: result.out #:: End
   }
   object Reply extends MessageCompanion[Reply, (Int, Any /* defined by requestId */)] {
     def tag = 1
@@ -126,7 +126,7 @@ object tfs {
   }
 
   class CancelRequest(val requestId: Int) extends Message {
-    def write = CancelRequest.tag.msg #:: requestId #:: End
+    def write = CancelRequest.tag.msg #:: requestId.out #:: End
   }
   object CancelRequest extends MessageCompanion[CancelRequest, Int] {
     def tag = 2
@@ -142,7 +142,7 @@ object tfs {
   }
 
   class RPCException(val text: String) extends Struct {
-    def write = RPCException.tag.msg #:: text #:: End
+    def write = RPCException.tag.msg #:: text.out #:: End
   }
   object RPCException extends StructCompanion[RPCException, String] {
     def apply(values: (String)) = new RPCException(values)

@@ -2,7 +2,8 @@ package twp4scala
 
 import scala.Either
 import java.lang.IllegalStateException
-import java.io.IOException
+import java.io.{PushbackInputStream, IOException}
+import tools.{DebugInput, Debugger}
 
 object Twp {
   def apply[T <: AbstractProtocol, S](proto: T)(block: T => S): Either[Exception, S] = {
@@ -105,7 +106,9 @@ trait Protocol extends AbstractProtocol with TwpReader with TwpWriter {
   /**
    * Can push back exactly one byte for checking message tags.
    */
-  abstract override lazy val in = new Input(super.in, 1)
+  abstract override lazy val in: Input =
+    if (!Twp.debug) new Input(super.in, 1)
+    else new DebugInput(super.in, 1)
 
   def shutdown = close
 
@@ -119,7 +122,6 @@ trait Protocol extends AbstractProtocol with TwpReader with TwpWriter {
       Twp.debug = true
     }
     msg.write.foreach(out write)
-    out write endOfContent
     out.flush
   }
 }
@@ -163,7 +165,7 @@ trait TwpWritable {
 }
 
 trait Message extends TwpWriter with TwpWritable with TwpConversions {
-  val End: Stream[Array[Byte]] = Stream.empty
+  val End: Stream[Array[Byte]] = Stream(Array(0.toByte))
 }
 
 trait MessageCompanion[S <: Message, T] extends TwpReader
@@ -261,7 +263,7 @@ abstract class AppTypeCompanion[S <: AppType[T], T] extends MessageCompanion[S, 
 }
 
 class ErrorMessage(val failedMsgType: Int, val error: String) extends Message {
-  def write = message(ErrorMessage.tag) #:: failedMsgType #:: error #:: Output
+  def write = message(ErrorMessage.tag) #:: convert(failedMsgType).out #:: error.out #:: End
 }
 
 object ErrorMessage extends MessageCompanion[ErrorMessage, (Int, String)] {
@@ -285,11 +287,40 @@ object Tag extends TwpReader {
 }
 
 trait TwpConversions extends TwpWriter {
-  implicit def writeA[T](value: T)(implicit writer: (T) => TwpWritable): Array[Byte] =
-    writer(value).write.flatten.toArray[Byte]
 
-  implicit def writeSequence[T](seq: Seq[T])(implicit writer: (T) => TwpWritable): Array[Byte] =
-    sequence ++ seq.map(writer).flatMap(_.write).flatten.toArray[Byte] ++ endOfContent
+  implicit def convert[T](value: T)(implicit write: (T) => Raw) = TwpConverter(value)
+
+  implicit def writeShortInt(i: Int) = Raw(shortInt(i))
+  implicit def writeLongInt(l: Long) = Raw(longInt(l.asInstanceOf[Int]))
+
+  implicit def writeString(str: String) = Raw(string(str))
+
+  implicit def writeSequence[T](seq: Seq[T])(implicit write: (T) => Raw): Raw =
+    Raw(sequence ++ seq.map(write(_).data).flatten ++ endOfContent)
+
+  implicit def writeAny(any: Any): Raw = Raw(any match {
+    case Raw(data) => data
+    case b: Array[Byte] => binary(b)
+    case a: TwpWritable => a.write.reduceLeft(_ ++ _)
+    case i: Int => someInt(i)
+    case l: Long => longInt(l.asInstanceOf[Int])
+    case s: String => string(s)
+    case s: Seq[_] => {
+      if (!s.isEmpty) {
+        s.head match {
+          case i: Int => writeSequence(s.asInstanceOf[Seq[Int]]).data
+          case l: Long => writeSequence(s.asInstanceOf[Seq[Long]]).data
+          case e: String => writeSequence(s.asInstanceOf[Seq[String]]).data
+          case e: TwpWritable => sequence(s.asInstanceOf[Seq[TwpWritable]])
+          case e => throw new IllegalStateException("Cannot write " + e + " of Seq " + s)
+        }
+      } else sequence(Nil)
+    }
+    case u: Unit => noValue
+    case Unit => noValue
+    case p: Product => Any(p.productIterator.toSeq: _*).write.flatten.toArray
+    case _ => throw new IllegalStateException("Cannot write " + any + " (" + any.getClass + ")")
+  })
 
   implicit def writeMessage(tag: Int) = new {
     def msg = message(tag)
@@ -302,6 +333,10 @@ trait TwpConversions extends TwpWriter {
   }
 }
 object TwpConversions extends TwpConversions
+
+case class TwpConverter[T](value: T)(implicit write: (T) => Raw) {
+  def out: Array[Byte] = write(value).data
+}
 
 trait Preview {
   def check(p: Int => Boolean)(implicit in: Input) =

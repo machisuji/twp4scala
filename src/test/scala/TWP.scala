@@ -38,7 +38,7 @@ class TWP extends Spec with ShouldMatchers {
       }
 
       class Operation(val name: String, val value: Float64) extends Struct {
-        def write = Operation.tag.raw #:: name #:: value #:: End
+        def write = Operation.tag.raw #:: name.out #:: value.out #:: End
       }
       object Operation extends StructCompanion[Operation, (String, Float64)] {
         def apply(values: (String, Float64)) = new Operation(values._1, values._2)
