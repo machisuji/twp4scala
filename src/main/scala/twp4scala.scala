@@ -7,9 +7,9 @@ package object twp4scala {
     def isDefinedAt(implicit in: Input) = check(tag => tag >= 17 && tag <= 127)
   }
 
-  implicit object shortIntReader extends TwpReader with TwpReadable[Int] with Preview {
-    def read(implicit in: Input) = shortInt
-    def isDefinedAt(implicit in: Input) = check(13 ==)
+  implicit object someIntReader extends TwpReader with TwpReadable[Int] with Preview {
+    def read(implicit in: Input) = someInt
+    def isDefinedAt(implicit in: Input) = check(tag => tag == 13 || tag == 14)
   }
 
   implicit object longIntReader extends TwpReader with TwpReadable[Long] with Preview {
