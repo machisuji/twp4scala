@@ -64,7 +64,7 @@ class TWP extends Spec with ShouldMatchers {
           case _ => fail("Could not read Application Type")
         }
       }.get
-      op.value should equal (inVal)
+      op.value.value should equal (inVal.value)
     }
 
     it("should generate proper Code") {

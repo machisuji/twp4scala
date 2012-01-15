@@ -156,6 +156,9 @@ trait Server extends Protocol {
 }
 
 trait TwpReadable[T] {
+  def checkDefined(implicit in: Input): Unit = ()
+  def checkComplete(implicit in: Input): Unit = ()
+
   def read(implicit in: Input): T
   def isDefinedAt(implicit in: Input): Boolean
 }
@@ -184,11 +187,11 @@ trait MessageCompanion[S <: Message, T] extends TwpReader
 
   def isDefinedAt(implicit in: Input): Boolean = Preview.check(tag + 4 ==)
 
-  def checkDefined(implicit in: Input): Unit = expect(message(tag), Some("message " + tag + " expected"))
+  override def checkDefined(implicit in: Input): Unit = expect(message(tag), Some("message " + tag + " expected"))
   /**
    * Checks whether or not the Message has been completely read. Expected to throw an Exception if not.
    */
-  def checkComplete(in: Input): Unit = expect(endOfContent, None)(in)
+  override def checkComplete(implicit in: Input): Unit = expect(endOfContent, None)(in)
 
   def tag: Int
   def read(implicit in: Input): T
@@ -199,10 +202,14 @@ trait MessageCompanion[S <: Message, T] extends TwpReader
   implicit val toReader: TwpReadable[S] = new TwpReadable[S] {
     def read(implicit input: Input) = in
     def isDefinedAt(implicit input: Input) = self.isDefinedAt
+    override def checkDefined(implicit in: Input) = self.checkDefined
+    override def checkComplete(implicit in: Input) = self.checkComplete
   }
 }
 
-trait EmptyMessageCompanion[S <: Message] extends TwpReader with TwpWriter with TwpConversions { self: S =>
+trait EmptyMessageCompanion[S <: Message] extends TwpReader
+    with TwpReadable[S] with TwpWriter with TwpConversions { self: S =>
+
   def unapply(in: Input): Boolean =
     if (isDefinedAt(in)) {
       checkDefined(in)
@@ -216,14 +223,17 @@ trait EmptyMessageCompanion[S <: Message] extends TwpReader with TwpWriter with 
 
   def isDefinedAt(implicit in: Input): Boolean = Preview.check(tag + 4 ==)
 
-  def checkDefined(implicit in: Input): Unit = expect(message(self.tag), Some("empty message " + self.tag + " expected"))
+  override def checkDefined(implicit in: Input): Unit = expect(message(self.tag),
+    Some("empty message " + self.tag + " expected"))
   /**
    * Checks whether or not the Message has been completely read. Expected to throw an Exception if not.
    */
-  def checkComplete(in: Input): Unit = expect(endOfContent, None)(in)
+  override def checkComplete(implicit in: Input): Unit = expect(endOfContent, None)(in)
 
   implicit def save(msg: S): Array[Byte] = msg.write.reduceLeft(_ ++ _)
   implicit def in(implicit input: Input): S = apply()
+
+  def read(implicit in: Input): S = apply()
 }
 
 trait AppType[T] extends Message {
@@ -248,11 +258,11 @@ trait AppType[T] extends Message {
 abstract class AppTypeCompanion[S <: AppType[T], T] extends MessageCompanion[S, T] {
 
   override def isDefinedAt(implicit input: Input) = Preview.check(tag ==)
-  override def checkDefined(implicit input: Input) = expect(tag, Some("application type " + tag))
-  override def checkComplete(in: Input): Unit = ()
+  override def checkDefined(implicit input: Input) = expect(myTag, Some("application type " + tag))
+
+  override def checkComplete(implicit in: Input): Unit = ()
 
   def read(reader: ((Input, Int) => T))(implicit in: Input): T = {
-    require(tag(in) == myTag, "Application Type %d expected".format(myTag))
     val size = in.take(4).toInt
     reader(in, size)
   }

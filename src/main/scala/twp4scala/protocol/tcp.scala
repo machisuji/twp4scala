@@ -61,14 +61,15 @@ package object tcp {
 
     def read(implicit input: Input) = {
       val tg = input.read // throw away union tag
-      Term(
-        if      (is[Float64])     {in[Float64]}
-        else if (is[Expression])  {in[Expression]}
-        else {
-          println("Now Term after all!!!?")
+      Term(input match {
+        case Float64(value)               => Float64(value)
+        case Expression(host, port, args) => Expression(host, port, args)
+        case _ => {
+          println("Could not read Term")
           Debugger.inspect(input)
-          throw new RuntimeException("Unexpected input")
-        })
+          throw new RuntimeException("Unexpected input while reading Term")
+        }
+      })
     }
 
     implicit def doubleToTerm(double: Double): Term = Term(Float64(double))
@@ -82,7 +83,7 @@ package object tcp {
   }
   object Expression extends StructCompanion[Expression, (Array[Byte], Int, Parameters)] {
     def apply(values: (Array[Byte], Int, Parameters)) = new Expression(values._1, values._2, values._3)
-    def read(implicit input: Input) = (in[Array[Byte]], in[Int], Parameters.in)
+    def read(implicit input: Input) = (in[Array[Byte]], in[Int], in[Parameters])
   }
 
   class Request(val requestId: Int, val arguments: Parameters) extends Message {
@@ -91,7 +92,7 @@ package object tcp {
   object Request extends MessageCompanion[Request, (Int, Parameters)] {
     def tag = 0
     def apply(values: (Int, Parameters)) = new Request(values._1, values._2)
-    def read(implicit input: Input) = (in[Int], Parameters.in)
+    def read(implicit input: Input) = (in[Int], in[Parameters])
   }
 
   class Reply(val requestId: Int, val result: Float64) extends Message {
@@ -100,7 +101,7 @@ package object tcp {
   object Reply extends MessageCompanion[Reply, (Int, Float64)] {
     def tag = 1
     def apply(values: (Int, Float64)) = new Reply(values._1, values._2)
-    def read(implicit input: Input) = (in[Int], Float64.in)
+    def read(implicit input: Input) = (in[Int], in[Float64])
   }
 
   class Error(val text: String) extends Message {

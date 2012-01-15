@@ -68,15 +68,21 @@ package object tcp {
             tcp ! Request(42, expr.arguments)
             tcp.in match {
               case Reply(rid, result: Float64) => result.value
-              case Error(msg) => throw new IllegalArgumentException(
-                "Could not calculate term: " + msg)
+              case Error(msg) => {
+                println("Could not calculate term: " + msg)
+                0d
+              }
               case input => {
                 twp4scala.tools.Debugger.inspect(input)
-                throw new RuntimeException("Connection aborted")
+                throw new RuntimeException("Invalid response")
               }
             }
           }
-          result.left.foreach(throw _)
+          result.left.foreach {
+            case e: java.net.ConnectException => println(
+              "Could not connect to Operation servers (try Calculator.start).")
+            case e => throw e
+          }
           result.right.get
         }
       }
@@ -98,38 +104,43 @@ package object tcp {
   class Calculator(val port: Int, val op: (Seq[Double]) => Double) extends TcpServer {
 
     def handleClient(socket: Socket) {
-      val result = Twp(TCP(socket)) { tcp =>
-        tcp.in match {
-          case Request(rid: Int, params: Parameters) => {
-            val values = params.flatMap { term =>
-              term.value match {
-                case value: Float64 => Some(value.value)
-                case expr: Expression => {
-                  val result = getResult(expr)
-                  result.left.foreach(err => tcp ! err)
-                  result.right.toOption
+      Twp(TCP(socket)) { tcp =>
+        try {
+          tcp.in match {
+            case Request(rid: Int, params: Parameters) => {
+              val values = params.flatMap { term =>
+                term.value match {
+                  case value: Float64 => Some(value.value)
+                  case expr: Expression => {
+                    val result = getResult(expr)
+                    result.left.foreach(err => tcp ! err)
+                    result.right.toOption
+                  }
                 }
               }
+              if (values.size == params.size) { // no errors, yay
+                val finalResult = op(values)
+                tcp ! Reply(rid + 1, Float64(finalResult))
+              }
             }
-            if (values.size == params.size) { // no errors, yay
-              val finalResult = op(values)
-              tcp ! Reply(rid + 1, Float64(finalResult))
+            case input => {
+              println("TCP Server does not understand: ")
+              twp4scala.tools.Debugger.inspect(input)
             }
           }
-          case input => {
-            println("TCP Server does not understand: ")
-            twp4scala.tools.Debugger.inspect(input)
+        } catch {
+          case e: Exception => {
+            println("Server: Could not handle Request")
+            e.printStackTrace
+            tcp ! Error(e.getClass + ": " + e.getMessage)
           }
         }
-      }
-      result.left.toOption.foreach { e =>
-        println("Server: Could not handle Request")
-        e.printStackTrace
       }
     }
 
     def getResult(expr: Expression): Either[Error, Double] = {
       val client = TCP(InetAddress.getByAddress(expr.host).getHostAddress, expr.port)
+      println("Get result from " + client.host + ":" + client.port)
       val result = Twp(client) { tcp =>
         tcp ! Request(42, expr.arguments)
         tcp.in match {
