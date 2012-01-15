@@ -34,6 +34,8 @@ package object tcp {
       out.writeDouble(value); out.close
       write(Float64, data.toByteArray)
     }
+
+    override def toString = "Float64(" + value + ")"
   }
   object Float64 extends AppTypeCompanion[Float64, Double] {
     def tag = 160
@@ -80,6 +82,9 @@ package object tcp {
 
   class Expression(val host: Array[Byte], val port: Int, val arguments: Parameters) extends Struct {
     def write = Expression.tag.raw #:: host.out #:: port.out #:: arguments.out #:: End
+    override def toString = "Expression(%s, %d, Parameters(%s)".format(
+      hostAddress, port, arguments.map(_.toString).mkString(", "))
+    def hostAddress = java.net.InetAddress.getByAddress(host).getHostAddress
   }
   object Expression extends StructCompanion[Expression, (Array[Byte], Int, Parameters)] {
     def apply(values: (Array[Byte], Int, Parameters)) = new Expression(values._1, values._2, values._3)
