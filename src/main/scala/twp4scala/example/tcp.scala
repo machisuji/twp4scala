@@ -139,8 +139,8 @@ package object tcp {
     }
 
     def getResult(expr: Expression): Either[Error, Double] = {
-      val client = TCP(InetAddress.getByAddress(expr.host).getHostAddress, expr.port)
-      println("Get result from " + client.host + ":" + client.port)
+      val host = InetAddress.getByAddress(expr.host).getHostAddress
+      val client = TCP(host, expr.port)
       val result = Twp(client) { tcp =>
         tcp ! Request(42, expr.arguments)
         tcp.in match {
