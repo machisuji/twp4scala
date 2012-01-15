@@ -1,9 +1,9 @@
 import java.io.{PushbackInputStream, ByteArrayInputStream}
 import org.scalatest.matchers.ShouldMatchers
 import org.scalatest.Spec
+import twp4scala.tools.{Debugger, DebugInput}
 import twp4scala._
 import twp4scala.{StructCompanion, Struct}
-import twp4scala.tools.DebugInput
 
 class Marshalling extends Spec with ShouldMatchers {
 
@@ -100,7 +100,10 @@ class Marshalling extends Spec with ShouldMatchers {
         val input = new Input(new ByteArrayInputStream(data.toArray.flatten))
         input match {
           case Reply(name, ls: LooseStruct) => ls.get[Seq[String], Seq[String]]
-          case _ => fail("Could not read Reply")
+          case _ => {
+            Debugger.inspect(input)
+            fail("Could not read Reply")
+          }
         }
       }.get
       reply.result should equal (ls)
