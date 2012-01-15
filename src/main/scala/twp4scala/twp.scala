@@ -298,7 +298,7 @@ trait TwpConversions extends TwpWriter {
 
   implicit def convert[T](value: T)(implicit write: (T) => Raw) = TwpConverter(value)
 
-  implicit def writeShortInt(i: Int) = Raw(shortInt(i))
+  implicit def writeShortInt(i: Int) = Raw(someInt(i))
   implicit def writeLongInt(l: Long) = Raw(longInt(l.asInstanceOf[Int]))
 
   implicit def writeString(str: String) = Raw(string(str))
