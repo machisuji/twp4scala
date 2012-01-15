@@ -62,7 +62,7 @@ trait TcpServer extends Runnable {
   }
 
   def serverStopped(server: ServerSocket) {
-    println("EchoServer stopped")
+    println("Server stopped")
   }
 
   def connectionOpened(socket: Socket) {
