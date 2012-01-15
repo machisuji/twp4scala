@@ -32,7 +32,8 @@ class RichInputStream(in: InputStream) {
   def take(numBytes: Int, pedantic: Boolean = true): Array[Byte] = {
     val data = new Array[Byte](numBytes)
     val read = fill(data, in, 0)
-    if (read < numBytes && pedantic) throw new EOFException("Reached EOF before expected number of bytes could be read.")
+    if (read < numBytes && pedantic) throw new EOFException(
+      "Reached EOF at %d bytes before %d could be read.".format(read, numBytes))
     data take read
   }
 
