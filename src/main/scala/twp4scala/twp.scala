@@ -173,6 +173,7 @@ trait MessageCompanion[S <: Message, T] extends TwpReader
 
   def unapply(in: Input): Option[T] = {
     if (isDefinedAt(in)) {
+      checkDefined(in)
       val result = Some(read(in))
       checkComplete(in)
       result
@@ -181,14 +182,9 @@ trait MessageCompanion[S <: Message, T] extends TwpReader
 
   def apply(values: T): S
 
-  /**
-   * Checks whether this kind of message can be read from the given PushbackInputStream.
-   * Any given implementation must not consume any data from the stream if the result is negative.
-   * That is all read bytes must be pushed back in that case.
-   */
-  def isDefinedAt(implicit in: Input): Boolean =
-    Some(message(in, failSilently = true)).filter(tag !=).map(in.unread).map(_ => false) getOrElse true
+  def isDefinedAt(implicit in: Input): Boolean = Preview.check(tag + 4 ==)
 
+  def checkDefined(implicit in: Input): Unit = expect(message(tag), Some("message " + tag + " expected"))
   /**
    * Checks whether or not the Message has been completely read. Expected to throw an Exception if not.
    */
@@ -206,21 +202,21 @@ trait MessageCompanion[S <: Message, T] extends TwpReader
   }
 }
 
-trait EmptyMessageCompanion[S <: Message] extends TwpReader with TwpWriter with TwpConversions { this: S =>
-  def unapply(in: Input): Boolean = isDefinedAt(in)
+trait EmptyMessageCompanion[S <: Message] extends TwpReader with TwpWriter with TwpConversions { self: S =>
+  def unapply(in: Input): Boolean =
+    if (isDefinedAt(in)) {
+      checkDefined(in)
+      checkComplete(in)
+      true
+    } else false
 
   def apply() = this
 
   def tag: Int
 
-  /**
-   * Checks whether this kind of message can be read from the given PushbackInputStream.
-   * Any given implementation must not consume any data from the stream if the result is negative.
-   * That is all read bytes must be pushed back in that case.
-   */
-  def isDefinedAt(implicit in: Input): Boolean =
-    Some(message(in, failSilently = true)).filter(tag !=).map(in.unread).map(_ => false) getOrElse true
+  def isDefinedAt(implicit in: Input): Boolean = Preview.check(tag + 4 ==)
 
+  def checkDefined(implicit in: Input): Unit = expect(message(self.tag), Some("empty message " + self.tag + " expected"))
   /**
    * Checks whether or not the Message has been completely read. Expected to throw an Exception if not.
    */
@@ -251,6 +247,8 @@ trait AppType[T] extends Message {
 
 abstract class AppTypeCompanion[S <: AppType[T], T] extends MessageCompanion[S, T] {
 
+  override def isDefinedAt(implicit input: Input) = Preview.check(tag ==)
+  override def checkDefined(implicit input: Input) = expect(tag, Some("application type " + tag))
   override def checkComplete(in: Input): Unit = ()
 
   def read(reader: ((Input, Int) => T))(implicit in: Input): T = {
@@ -339,12 +337,11 @@ case class TwpConverter[T](value: T)(implicit write: (T) => Raw) {
 }
 
 trait Preview {
-  def check(p: Int => Boolean)(implicit in: Input) =
-    Some(TwpReader.tag).map{ tg =>
-      in.unread(tg); tg
-    }.filterNot(p).map(_ => false) getOrElse true
+  def check(p: Int => Boolean)(implicit in: Input) = {
+    val tag = TwpReader.tag
+    try { p(tag) } finally { in.unread(tag) }
+  }
 }
-
 object Preview extends Preview
 
 object String {

@@ -11,8 +11,8 @@ object Struct {
 
 trait StructCompanion[S <: Struct, T] extends MessageCompanion[S, T] {
   def tag = Struct.tag
-  override def isDefinedAt(implicit in: Input) =
-    Some(tag(in)).filter(tag !=).map(in.unread).map(_ => false) getOrElse true
+  override def checkDefined(implicit in: Input): Unit = expect(tag, Some("struct expected"))
+  override def isDefinedAt(implicit in: Input) = Preview.check(tag ==)
 }
 
 class LooseStruct(val values: Seq[Any], extensionId: Option[Int] = None) extends TwpWriter with TwpConversions with TwpWritable {
