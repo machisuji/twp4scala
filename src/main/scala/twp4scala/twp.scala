@@ -107,8 +107,8 @@ trait Protocol extends AbstractProtocol with TwpReader with TwpWriter {
    * Can push back exactly one byte for checking message tags.
    */
   abstract override lazy val in: Input =
-    if (!Twp.debug) new Input(super.in, 1)
-    else new DebugInput(super.in, 1)
+    if (!Twp.debug) new Input(super.in, 16)
+    else new DebugInput(super.in, 16)
 
   def shutdown = close
 
