@@ -357,7 +357,7 @@ object String {
 
 object Int {
   def unapply(in: Input): Option[Int] = {
-    val str = TwpReader.tryShortInt(in)
+    val str = TwpReader.trySomeInt(in)
     str.left.foreach(in.unread)
     str.right.toOption
   }
