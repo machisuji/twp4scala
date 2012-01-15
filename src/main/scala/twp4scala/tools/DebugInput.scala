@@ -2,7 +2,7 @@ package twp4scala.tools
 
 import java.io.InputStream
 
-class DebugInput(in: InputStream, bufferSize: Int = 1) extends twp4scala.Input(in, bufferSize) {
+class DebugInput(in: InputStream, bufferSize: Int = 16) extends twp4scala.Input(in, bufferSize) {
   override def read: Int = {
     print("[debug] \t\t\t\t|" + Debugger.getLines(5).mkString(" <- ") + "| reading ... ")
     try {
@@ -15,6 +15,7 @@ class DebugInput(in: InputStream, bufferSize: Int = 1) extends twp4scala.Input(i
   }
 
   override def unread(byte: Int) {
+    println("[debug] unread buffer: " + this.buf.mkString(" ") + " (size: " + this.buf.size + ")")
     println("[debug] \t\t\t\t|" + Debugger.getLines(5).mkString(" <- ") + "| unreading   " + byte)
     super.unread(byte)
   }
