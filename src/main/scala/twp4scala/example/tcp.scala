@@ -89,6 +89,10 @@ package object tcp {
     def stop() {
       Operation.all.foreach(_.server.stop)
     }
+
+    def host_=(host: String) {
+      Operation.all.foreach(_.host = host)
+    }
   }
 
   class Calculator(val port: Int, val op: (Seq[Double]) => Double) extends TcpServer {
