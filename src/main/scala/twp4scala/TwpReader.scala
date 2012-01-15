@@ -6,6 +6,7 @@ import Twp.{log, logr}
 trait TwpReader extends ByteOperations {
 
   def in[T](implicit reader: TwpReadable[T], in: Input): T = reader.read
+  def is[T](implicit reader: TwpReadable[T], in: Input): Boolean = reader.isDefinedAt
 
   def tag(implicit in: Input) = {
     val ret = in.read
