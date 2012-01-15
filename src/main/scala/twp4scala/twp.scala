@@ -408,6 +408,8 @@ abstract class SeqCompanion[S <: Seq[T], T](implicit elementReader: TwpReadable[
     def read(implicit in: twp4scala.Input): S = reader.read.asInstanceOf[S]
   }
 
+  implicit def makeReader[S <: Seq[T], T](seqCompanion: SeqCompanion[S, T]) = seqCompanion.toReader
+
   def in(implicit in: twp4scala.Input): S = toReader.read(in)
 
   def unapplySeq(in: Input): Option[List[T]] =
