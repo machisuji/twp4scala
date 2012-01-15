@@ -340,7 +340,9 @@ case class TwpConverter[T](value: T)(implicit write: (T) => Raw) {
 
 trait Preview {
   def check(p: Int => Boolean)(implicit in: Input) =
-    Some(TwpReader.tag).filterNot(p).map(in.unread).map(_ => false) getOrElse true
+    Some(TwpReader.tag).map{ tg =>
+      in.unread(tg); tg
+    }.filterNot(p).map(_ => false) getOrElse true
 }
 
 object Preview extends Preview
