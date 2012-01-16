@@ -54,12 +54,10 @@ object LooseStruct extends TwpReader with TwpReadable[LooseStruct] with Preview 
       if (check(Struct.tag ==)) {
         input.read
         None
-      }
-      else if (check(12 ==)) {
+      } else if (check(12 ==)) {
         input.read
         Some(input.take(4).toInt)
-      }
-      else throw new RuntimeException("Expected some sort of struct, got: " + input.read)
+      } else throw new RuntimeException("Expected some sort of struct, got: " + input.read)
     val values = Iterator.continually(input.read).takeWhile(0 <).map(input.unread).map(_ => Any.read(input))
     new LooseStruct(values.toList, extId)
   }
