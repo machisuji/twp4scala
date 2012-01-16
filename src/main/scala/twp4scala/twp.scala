@@ -120,8 +120,9 @@ trait Protocol extends AbstractProtocol with TwpReader with TwpWriter {
       println("[DEBUG]                  " + "^(\\d+) \\|".r.replaceAllIn(data,
         m => paint(m.group(1), Magenta) + " |") + " | " + paint("0", Magenta))
       Twp.debug = true
+      println("[debug] Sending " + msg.write.flatten.mkString(" "))
     }
-    msg.write.foreach(out write)
+    msg.write.foreach(out.write)
     out.flush
   }
 }
