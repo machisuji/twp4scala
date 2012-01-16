@@ -2,9 +2,7 @@ package twp4scala
 
 import java.io.{Console => _, _}
 import java.net._
-import twp4scala._
-import twp4scala.protocol.echo._
-import actors.Actor
+import actors.threadpool.Executors
 
 trait TcpServer extends Runnable {
 
@@ -16,19 +14,26 @@ trait TcpServer extends Runnable {
 
   def run() {
     val socket = new ServerSocket(port)
+    val exec = Executors.newCachedThreadPool
     serverStarted(socket)
     try {
       while (!cancel) {
         val client = socket.accept
         if (!cancel) {
-          connectionOpened(client)
-          val actor = new Actor {
-            def act() {
-              handleClient(client)
-              connectionClosed(client)
+          val handler = new Runnable {
+            def run() {
+              try {
+                connectionOpened(client)
+                handleClient(client)
+                connectionClosed(client)
+              } finally {
+                try { client.close() } catch {
+                  case e: IOException => ()
+                }
+              }
             }
           }
-          actor.start
+          exec.execute(handler)
         }
       }
     } catch {
@@ -38,6 +43,7 @@ trait TcpServer extends Runnable {
       }
     } finally {
       serverStopped(socket)
+      exec.shutdown()
       try { socket.close } catch { case _ => }
     }
   }
@@ -67,10 +73,10 @@ trait TcpServer extends Runnable {
   }
 
   def connectionOpened(socket: Socket) {
-    println("Request from " + socket.getInetAddress.getHostName + ":" + socket.getPort)
+    // println("Request from " + socket.getInetAddress.getHostName + ":" + socket.getPort)
   }
 
   def connectionClosed(socket: Socket) {
-    println("Closed connection to " + socket.getInetAddress.getHostName + ":" + socket.getPort)
+    // println("Closed connection to " + socket.getInetAddress.getHostName + ":" + socket.getPort)
   }
 }

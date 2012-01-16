@@ -14,6 +14,7 @@ object Benchmark {
   def local100kEchoRequests() {
     val echoServer = new EchoServer(9000)
     echoServer.start()
+    val ms = System.currentTimeMillis
     try {
       for (i <- 1 to 100000) {
         Twp(Echo("localhost", echoServer.port)) { echo =>
@@ -21,7 +22,7 @@ object Benchmark {
           echo.in match {
             case Reply(text, letters) => if (letters != 0) {
               println("empty echo request yielded invalid response: Reply(%s, %d)".format(text, letters))
-            }
+            } else print(".")
             case _ => println("empty echo request %d failed".format(i))
           }
         }.left.foreach { e =>
@@ -29,6 +30,9 @@ object Benchmark {
         }
       }
     } finally {
+      println()
+      val result = System.currentTimeMillis() - ms
+      println("Time for 100k local, empty echo requests: " + result + " ms")
       echoServer.stop()
     }
   }
