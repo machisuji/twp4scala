@@ -24,39 +24,112 @@ package object tcp {
   }
 
   object Operation {
-    val all = List(Add, Sub, Mul, Fak)
+    val all = List(Add, Sub, Mul, Fak, Div, Pow, Sin, Cos, Tan, Pi, E, Sqrt, Neg)
   }
 
   object Add extends Operation {
     var port = 9001
 
-    lazy val server = new Calculator(port, (values: Seq[Double]) =>
-      values.foldLeft(0d)((acc, v) => acc + v))
-  }
-
-  object Sub extends Operation {
-    var port = 9002
-
-    lazy val server = new Calculator(Sub.port, (values: Seq[Double]) => {
-      if (values.size == 0) 0d
-      else if (values.size == 1) (-1d) * values.head
-      else values.reduceLeft(_ - _)
-    })
+    lazy val server = new Calculator(port,
+      (values: Seq[Double]) => values.foldLeft(0d)((acc, v) => acc + v),
+      "Add"
+    )
   }
 
   object Mul extends Operation {
-    var port = 9003
+    var port = 9002
 
-    lazy val server = new Calculator(Mul.port, (values: Seq[Double]) =>
-      values.foldLeft(1d)((acc, v) => acc * v))
+    lazy val server = new Calculator(port,
+      (values: Seq[Double]) => values.foldLeft(1d)((acc, v) => acc * v),
+      "Mul"
+    )
   }
 
   object Fak extends Operation {
-    var port = 9004
-    lazy val server = new Calculator(port, (values: Seq[Double]) =>
-      values.headOption.map { num =>
+    var port = 9003
+    lazy val server = new Calculator(port,
+      (values: Seq[Double]) => values.headOption.map { num =>
         (1l to num.asInstanceOf[Long]).reduce(_ * _).asInstanceOf[Double]
-      } getOrElse(0))
+      } getOrElse(0),
+      "Fak")
+  }
+
+  object Sub extends Operation {
+    var port = 9004
+
+    lazy val server = new Calculator(port,
+      (values: Seq[Double]) => values.reduceLeft(_ - _),
+      "Sub")
+  }
+
+  object Div extends Operation {
+    var port = 9005
+
+    lazy val server = new Calculator(port, (values: Seq[Double]) => values.reduce(_ / _), "Sub")
+  }
+
+  object Pow extends Operation {
+    var port = 9006
+
+    lazy val server = new Calculator(port,
+      (values: Seq[Double]) => scala.math.pow(values(0), values(1)),
+      "Pow")
+  }
+
+  object Sin extends Operation {
+    var port = 9007
+
+    lazy val server = new Calculator(port,
+      (values: Seq[Double]) => scala.math.sin(values.head),
+      "Sin")
+  }
+
+  object Cos extends Operation {
+    var port = 9008
+
+    lazy val server = new Calculator(port,
+      (values: Seq[Double]) => scala.math.cos(values.head),
+      "Cos")
+  }
+
+  object Tan extends Operation {
+    var port = 9009
+
+    lazy val server = new Calculator(port,
+      (values: Seq[Double]) => scala.math.tan(values.head),
+      "Tan")
+  }
+
+  object Pi extends Operation {
+    var port = 9010
+
+    lazy val server = new Calculator(port,
+      (values: Seq[Double]) => scala.math.Pi,
+      "Pi")
+  }
+
+  object E extends Operation {
+    var port = 9011
+
+    lazy val server = new Calculator(port,
+      (values: Seq[Double]) => scala.math.E,
+      "E")
+  }
+
+  object Sqrt extends Operation {
+    var port = 9012
+
+    lazy val server = new Calculator(port,
+      (values: Seq[Double]) => scala.math.sqrt(values.head),
+      "Sqrt")
+  }
+
+  object Neg extends Operation {
+    var port = 9013
+
+    lazy val server = new Calculator(port,
+      (values: Seq[Double]) => values.head * -1d,
+      "Neg")
   }
 
   object Calculator {
@@ -99,9 +172,11 @@ package object tcp {
     def host_=(host: String) {
       Operation.all.foreach(_.host = host)
     }
+
+    def host: Seq[String] = Operation.all.map(_.host)
   }
 
-  class Calculator(val port: Int, val op: (Seq[Double]) => Double) extends TcpServer {
+  class Calculator(val port: Int, val op: (Seq[Double]) => Double, name: String = null) extends TcpServer {
 
     def handleClient(socket: Socket) {
       Twp(TCP(socket)) { tcp =>
@@ -119,8 +194,17 @@ package object tcp {
                 }
               }
               if (values.size == params.size) { // no errors, yay
-                val finalResult = op(values)
-                tcp ! Reply(rid + 1, Float64(finalResult))
+                println("(" + (if (name != null) name else this.toString) + " " +
+                  values.map(_.toString).mkString(", ") + ")")
+                val finalResult: Either[Exception, Double] = try {
+                  Right(op(values))
+                } catch {
+                  case e: Exception => Left(e)
+                }
+                finalResult.left.toOption.foreach(e =>
+                  tcp ! Error(e.getClass + ": " + e.getMessage))
+                finalResult.right.toOption.foreach(res =>
+                  tcp ! Reply(rid + 1, Float64(res)))
               }
             }
             case input => {
