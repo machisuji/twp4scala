@@ -44,15 +44,27 @@ class LooseStruct(val values: Seq[Any], extensionId: Option[Int] = None) extends
       values(3).asInstanceOf[T4], values(4).asInstanceOf[T5])
 
   def asExtension(id: Int) = new LooseStruct(values, Some(id))
+
+  def isExtension = extensionId.isDefined
 }
 
-object LooseStruct extends TwpReader with TwpReadable[LooseStruct] {
+object LooseStruct extends TwpReader with TwpReadable[LooseStruct] with Preview {
   def read(implicit input: Input): LooseStruct = {
-    expect(2, Some("struct"))
+    val extId =
+      if (check(Struct.tag ==)) {
+        input.read
+        None
+      }
+      else if (check(12 ==)) {
+        input.read
+        Some(input.take(4).toInt)
+      }
+      else throw new RuntimeException("Expected some sort of struct, got: " + input.read)
     val values = Iterator.continually(input.read).takeWhile(0 <).map(input.unread).map(_ => Any.read(input))
-    new LooseStruct(values.toList)
+    new LooseStruct(values.toList, extId)
   }
-  def isDefinedAt(implicit in: Input): Boolean = Preview.check(Struct.tag ==)
+  def isDefinedAt(implicit in: Input): Boolean = Preview.check(tag =>
+    Struct.tag == tag || 12 == tag)
 }
 
 object Any extends TwpReader with TwpConversions with TwpReadable[Any] {
@@ -62,11 +74,11 @@ object Any extends TwpReader with TwpConversions with TwpReadable[Any] {
   def read(implicit input: Input): Any = {
     Some(input.read).map { tag =>
       if (tag == 1) None
-      else if (tag == 12) {input.drainWhile(0<); input.unread(0); None }
       else {
         input.unread(tag)
         tag match {
           case 2 => LooseStruct.read
+          case 12 => LooseStruct.read
           case 3 => in[Seq[Any]]
           case 13 => someInt
           case 14 => someInt

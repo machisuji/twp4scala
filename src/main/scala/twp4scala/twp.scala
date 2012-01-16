@@ -158,7 +158,7 @@ trait Server extends Protocol {
 
 trait TwpReadable[T] {
   def checkDefined(implicit in: Input): Unit = ()
-  def checkComplete(implicit in: Input): Unit = ()
+  def checkComplete(implicit in: Input): Option[LooseStruct] = None
 
   def read(implicit in: Input): T
   def isDefinedAt(implicit in: Input): Boolean
@@ -170,6 +170,8 @@ trait TwpWritable {
 
 trait Message extends TwpWriter with TwpWritable with TwpConversions {
   val End: Stream[Array[Byte]] = Stream(Array(0.toByte))
+
+  var extension: Option[LooseStruct] = None
 }
 
 trait MessageCompanion[S <: Message, T] extends TwpReader
@@ -192,7 +194,14 @@ trait MessageCompanion[S <: Message, T] extends TwpReader
   /**
    * Checks whether or not the Message has been completely read. Expected to throw an Exception if not.
    */
-  override def checkComplete(implicit in: Input): Unit = expect(endOfContent, None)(in)
+  override def checkComplete(implicit in: Input): Option[LooseStruct] = {
+    if (Preview.check(0 !=) && LooseStruct.isDefinedAt) {
+      Some(LooseStruct.read)
+    } else {
+      expect(endOfContent, None)(in)
+      None
+    }
+  }
 
   def tag: Int
   def read(implicit in: Input): T
@@ -229,7 +238,10 @@ trait EmptyMessageCompanion[S <: Message] extends TwpReader
   /**
    * Checks whether or not the Message has been completely read. Expected to throw an Exception if not.
    */
-  override def checkComplete(implicit in: Input): Unit = expect(endOfContent, None)(in)
+  override def checkComplete(implicit in: Input): Option[LooseStruct] = {
+    expect(endOfContent, None)(in)
+    None
+  }
 
   implicit def save(msg: S): Array[Byte] = msg.write.reduceLeft(_ ++ _)
   implicit def in(implicit input: Input): S = apply()
@@ -261,7 +273,7 @@ abstract class AppTypeCompanion[S <: AppType[T], T] extends MessageCompanion[S, 
   override def isDefinedAt(implicit input: Input) = Preview.check(tag ==)
   override def checkDefined(implicit input: Input) = expect(myTag, Some("application type " + tag))
 
-  override def checkComplete(implicit in: Input): Unit = ()
+  override def checkComplete(implicit in: Input): Option[LooseStruct] = None
 
   def read(reader: ((Input, Int) => T))(implicit in: Input): T = {
     val size = in.take(4).toInt
