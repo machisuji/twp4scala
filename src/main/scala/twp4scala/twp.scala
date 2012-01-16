@@ -196,7 +196,13 @@ trait MessageCompanion[S <: Message, T] extends TwpReader
    */
   override def checkComplete(implicit in: Input): Option[LooseStruct] = {
     if (Preview.check(0 !=) && LooseStruct.isDefinedAt) {
-      Some(LooseStruct.read)
+      try {
+        Some(LooseStruct.read)
+      } finally {
+        if (Preview.check(0 ==)) {
+          expect(0, None)
+        }
+      }
     } else {
       expect(endOfContent, None)(in)
       None
