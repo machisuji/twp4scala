@@ -19,7 +19,7 @@ trait TwpReader extends ByteOperations {
   }
 
   def expect(expected: Int, msg: Option[String])(implicit in: Input): Int = {
-    logr("expecting " + expected + " (" + Debugger.getLines(6).mkString(" <- ") + ")")
+    logr("expecting " + expected + " (" + Debugger.getLines(9).mkString(" <- ") + ")")
     val actual = /*if (expected == 0 && in.available == 0) 0 else*/ in.read
     val info = msg.map("(" + _ + ")").getOrElse("")
     logr("actually: " + actual)
