@@ -4,6 +4,7 @@ import java.io.{Console => _, _}
 import java.net._
 import twp4scala._
 import twp4scala.protocol.echo._
+import actors.Actor
 
 trait TcpServer extends Runnable {
 
@@ -19,15 +20,15 @@ trait TcpServer extends Runnable {
     try {
       while (!cancel) {
         val client = socket.accept
-        val handler = new Runnable {
-          def run {
-            handleClient(client)
-            connectionClosed(client)
-          }
-        }
         if (!cancel) {
           connectionOpened(client)
-          new Thread(handler).start
+          val actor = new Actor {
+            def act() {
+              handleClient(client)
+              connectionClosed(client)
+            }
+          }
+          actor.start
         }
       }
     } catch {
