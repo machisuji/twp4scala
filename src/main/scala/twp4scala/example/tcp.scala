@@ -49,7 +49,7 @@ package object tcp {
     var port = 9003
     lazy val server = new Calculator(port,
       (values: Seq[Double]) => values.headOption.map { num =>
-        (1l to num.asInstanceOf[Long]).reduce(_ * _).asInstanceOf[Double]
+        (1l to num.asInstanceOf[Long]).map(_.toDouble).reduce(_ * _)
       } getOrElse(0),
       "Fak")
   }
@@ -142,8 +142,7 @@ package object tcp {
             tcp.in match {
               case Reply(rid, result: Float64) => result.value
               case Error(msg) => {
-                println("Could not calculate term: " + msg)
-                0d
+                throw new RuntimeException("Could not calculate term: " + msg)
               }
               case input => {
                 twp4scala.tools.Debugger.inspect(input)
@@ -204,7 +203,7 @@ package object tcp {
                 finalResult.left.toOption.foreach(e =>
                   tcp ! Error(e.getClass + ": " + e.getMessage))
                 finalResult.right.toOption.foreach(res =>
-                  tcp ! Reply(rid + 1, Float64(res)))
+                  tcp ! Reply(rid, Float64(res)))
               }
             }
             case input => {
