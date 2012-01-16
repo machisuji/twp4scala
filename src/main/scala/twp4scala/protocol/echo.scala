@@ -21,21 +21,21 @@ object Echo {
 sealed trait Message extends twp4scala.Message // seal for pattern matching
 
 class Request(val text: String) extends Message {
-  def write = Request.tag.msg #:: text.out #:: Output
+  def write = Request.tag.msg #:: text.out #:: End
 }
 
 class Reply(val text: String, val letters: Int) extends Message {
-  def write = Reply.tag.msg #:: text.out #:: letters.out #:: Output
+  def write = Reply.tag.msg #:: text.out #:: letters.out #:: End
 }
 
 object Request extends MessageCompanion[Request, String] {
   def tag = 0
   def apply(text: String) = new Request(text)
-  def read(implicit in: Input) = string
+  def read(implicit input: Input) = in[String]
 }
 
 object Reply extends MessageCompanion[Reply, (String, Int)] {
   def tag = 1
   def apply(values: (String, Int)) = new Reply(values._1, values._2)
-  def read(implicit in: Input) = (string, someInt)
+  def read(implicit input: Input) = (in[String], in[Int])
 }
