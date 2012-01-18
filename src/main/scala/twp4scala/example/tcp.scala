@@ -22,115 +22,34 @@ package object tcp {
       Term(expr)
     }
   }
+  class Op(var port: Int, name: String, fun: (Seq[Double]) => Double) extends Operation {
+    lazy val server = new Calculator(port, fun, name)
+  }
 
   object Operation {
     val all = List(Add, Sub, Mul, Fak, Div, Pow, Sin, Cos, Tan, Pi, E, Sqrt, Neg)
   }
 
-  object Add extends Operation {
-    var port = 9001
+  object Add extends Op(9001, "Add", (values: Seq[Double]) => values.foldLeft(0d)((acc, v) => acc + v))
+  object Mul extends Op(9002, "Mul", (values: Seq[Double]) => values.foldLeft(1d)((acc, v) => acc * v))
 
-    lazy val server = new Calculator(port,
-      (values: Seq[Double]) => values.foldLeft(0d)((acc, v) => acc + v),
-      "Add"
-    )
-  }
+  object Fak extends Op(9003, "Fak", (values: Seq[Double]) =>
+    (1l to values.head.asInstanceOf[Long]).map(_.toDouble).reduce(_ * _))
 
-  object Mul extends Operation {
-    var port = 9002
+  object Sub extends Op(9004, "Sub", (values: Seq[Double]) => values.reduceLeft(_ - _))
+  object Div extends Op(9005, "Div", (values: Seq[Double]) => values.reduce(_ / _))
 
-    lazy val server = new Calculator(port,
-      (values: Seq[Double]) => values.foldLeft(1d)((acc, v) => acc * v),
-      "Mul"
-    )
-  }
+  object Pow extends Op(9006, "Pow", (values: Seq[Double]) => scala.math.pow(values(0), values(1)))
 
-  object Fak extends Operation {
-    var port = 9003
-    lazy val server = new Calculator(port,
-      (values: Seq[Double]) => values.headOption.map { num =>
-        (1l to num.asInstanceOf[Long]).map(_.toDouble).reduce(_ * _)
-      } getOrElse(0),
-      "Fak")
-  }
+  object Sin extends Op(9007, "Sin", (values: Seq[Double]) => scala.math.sin(values.head))
+  object Cos extends Op(9008, "Cos", (values: Seq[Double]) => scala.math.cos(values.head))
+  object Tan extends Op(9009, "Tan", (values: Seq[Double]) => scala.math.tan(values.head))
 
-  object Sub extends Operation {
-    var port = 9004
+  object Pi extends Op(9010, "Pi", _ => scala.math.Pi)
+  object E extends Op(9011, "E", _ => scala.math.E)
 
-    lazy val server = new Calculator(port,
-      (values: Seq[Double]) => values.reduceLeft(_ - _),
-      "Sub")
-  }
-
-  object Div extends Operation {
-    var port = 9005
-
-    lazy val server = new Calculator(port, (values: Seq[Double]) => values.reduce(_ / _), "Sub")
-  }
-
-  object Pow extends Operation {
-    var port = 9006
-
-    lazy val server = new Calculator(port,
-      (values: Seq[Double]) => scala.math.pow(values(0), values(1)),
-      "Pow")
-  }
-
-  object Sin extends Operation {
-    var port = 9007
-
-    lazy val server = new Calculator(port,
-      (values: Seq[Double]) => scala.math.sin(values.head),
-      "Sin")
-  }
-
-  object Cos extends Operation {
-    var port = 9008
-
-    lazy val server = new Calculator(port,
-      (values: Seq[Double]) => scala.math.cos(values.head),
-      "Cos")
-  }
-
-  object Tan extends Operation {
-    var port = 9009
-
-    lazy val server = new Calculator(port,
-      (values: Seq[Double]) => scala.math.tan(values.head),
-      "Tan")
-  }
-
-  object Pi extends Operation {
-    var port = 9010
-
-    lazy val server = new Calculator(port,
-      (values: Seq[Double]) => scala.math.Pi,
-      "Pi")
-  }
-
-  object E extends Operation {
-    var port = 9011
-
-    lazy val server = new Calculator(port,
-      (values: Seq[Double]) => scala.math.E,
-      "E")
-  }
-
-  object Sqrt extends Operation {
-    var port = 9012
-
-    lazy val server = new Calculator(port,
-      (values: Seq[Double]) => scala.math.sqrt(values.head),
-      "Sqrt")
-  }
-
-  object Neg extends Operation {
-    var port = 9013
-
-    lazy val server = new Calculator(port,
-      (values: Seq[Double]) => values.head * -1d,
-      "Neg")
-  }
+  object Sqrt extends Op(9012, "Sqrt", (values: Seq[Double]) => scala.math.sqrt(values.head))
+  object Neg extends Op(9013, "Neg", (values: Seq[Double]) => values.head * -1d)
 
   object Calculator {
     def get(term: Term): Double = {
