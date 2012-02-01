@@ -27,7 +27,7 @@ trait TwpReader extends ByteOperations {
     else throw new RuntimeException("Expected " + expected + " " + info + ", got: " + actual)
   }
   def expect(expected: Array[Byte], msg: Option[String])(implicit in: Input): Int =
-    expect(expected.head.toInt, msg)(in)
+    expected.map(byte => expect(byte, msg)).headOption.getOrElse(-1)
 
   def message(implicit in: Input, failSilently: Boolean = false) = {
     val res = in.read
