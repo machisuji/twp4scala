@@ -170,25 +170,26 @@ trait TwpWritable {
 
 trait Message extends TwpWriter with TwpWritable with TwpConversions {
   val End: Stream[Array[Byte]] = Stream(Array(0.toByte))
-
-  var extension: Option[LooseStruct] = None
 }
 
 trait MessageCompanion[S <: Message, T] extends TwpReader
-    with TwpWriter with TwpReadable[T] with TwpConversions { self =>
+    with TwpWriter with TwpReadable[T] { self =>
+
+  def isExtension = tag > 7
 
   def unapply(in: Input): Option[T] = {
     if (isDefinedAt(in)) {
       checkDefined(in)
       val result = Some(read(in))
-      checkComplete(in)
+      in.lastExtension = checkComplete(in)
       result
     } else None
   }
 
   def apply(values: T): S
 
-  def isDefinedAt(implicit in: Input): Boolean = Preview.check(tag + 4 ==)
+  def isDefinedAt(implicit in: Input): Boolean = Preview.check(byte =>
+    if (isExtension) byte == 12 && Preview.check(4, num => num.toSeq == tag.getBytes().toSeq) else tag + 4 == byte)
 
   override def checkDefined(implicit in: Input): Unit = expect(message(tag), Some("message " + tag + " expected"))
   /**
@@ -290,7 +291,7 @@ abstract class AppTypeCompanion[S <: AppType[T], T] extends MessageCompanion[S, 
 }
 
 class ErrorMessage(val failedMsgType: Int, val error: String) extends Message {
-  def write = message(ErrorMessage.tag) #:: convert(failedMsgType).out #:: error.out #:: End
+  def write = message(ErrorMessage.tag) #:: someInt(failedMsgType) #:: string(error) #:: End
 }
 
 object ErrorMessage extends MessageCompanion[ErrorMessage, (Int, String)] {
@@ -305,7 +306,7 @@ object ErrorMessage extends MessageCompanion[ErrorMessage, (Int, String)] {
  * @param data DER-encoded Certificate as defined in RFC 3280
  */
 class Certificate(val data: Array[Byte]) extends Message {
-  def write = message(Signature.tag) #:: convert(data).out #:: End
+  def write = message(Certificate.tag) #:: binary(data) #:: End
 }
 object Certificate extends MessageCompanion[Certificate, Array[Byte]] {
   def tag = 27
