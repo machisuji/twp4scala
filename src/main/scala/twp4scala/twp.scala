@@ -398,6 +398,11 @@ trait Preview {
     val tag = TwpReader.tag
     try { p(tag) } finally { in.unread(tag) }
   }
+  def check(size: Int, p: Array[Byte] => Boolean)(implicit in: Input) = {
+    val bytes = new Array[Byte](size)
+    val read = in.read(bytes)
+    try { p(bytes) } finally { in.unread(bytes.take(read)) }
+  }
 }
 object Preview extends Preview
 
