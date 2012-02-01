@@ -40,9 +40,9 @@ class Marshalling extends Spec with ShouldMatchers {
   describe("Reading") {
     it("should work for Structs (and by extension for Messages)") {
       val op = Operation("add", Seq(1, 2, 3))
-      val readArgs = Some(op.write).map { data =>
-        val input = new java.io.PushbackInputStream(new ByteArrayInputStream(data.toArray.flatten))
-        input match {
+      val readArgs = Some(op.out).map { data =>
+        val input = DebugProtocol(data)
+        input.in match {
           case Operation(name, args) => args
           case _ => fail("Could not read Application Type")
         }
