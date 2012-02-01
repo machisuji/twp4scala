@@ -16,3 +16,5 @@ libraryDependencies ++= Seq(
   "dnsjava" % "dnsjava"% "2.1.1",
   "org.scalatest" %% "scalatest" % "1.6.1" % "test"
 )
+
+// parallelExecution in Test := false
