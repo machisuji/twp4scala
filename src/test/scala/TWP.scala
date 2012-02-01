@@ -1,10 +1,9 @@
-import java.io.{ByteArrayInputStream, ByteArrayOutputStream, DataOutputStream, DataInputStream}
-import java.util.NoSuchElementException
+import java.io.{ByteArrayInputStream}
 import org.scalatest.Spec
 import org.scalatest.matchers.ShouldMatchers
 import twp4scala._
 import twp4scala.tools.ast.{ApplicationType}
-import twp4scala.tools.TDL
+import twp4scala.tools.{DebugProtocol, TDL}
 
 class TWP extends Spec with ShouldMatchers {
 
@@ -57,9 +56,9 @@ class TWP extends Spec with ShouldMatchers {
     it("should marshal correctly") {
       import tcp._
       val op = Operation("add", Float64(42))
-      val inVal = Some(op.write).map { data =>
-        val input = new java.io.PushbackInputStream(new ByteArrayInputStream(data.toArray.flatten))
-        input match {
+      val inVal = Some(op.out).map { data =>
+        val dp = DebugProtocol(data)
+        dp.in match {
           case Operation(name, value) => value
           case _ => fail("Could not read Application Type")
         }
