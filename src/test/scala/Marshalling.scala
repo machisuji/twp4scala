@@ -1,7 +1,7 @@
 import java.io.{PushbackInputStream, ByteArrayInputStream}
 import org.scalatest.matchers.ShouldMatchers
 import org.scalatest.Spec
-import twp4scala.tools.{Debugger, DebugInput}
+import twp4scala.tools.{DebugProtocol, Debugger, DebugInput}
 import twp4scala._
 import twp4scala.{StructCompanion, Struct}
 
@@ -53,7 +53,7 @@ class Marshalling extends Spec with ShouldMatchers {
     it("should work for sequences (Seq)") { import TwpConversions._
       val seq = Seq(1, 2, 3)
       val data = seq.out
-      implicit val input = new PushbackInputStream(new ByteArrayInputStream(data :+ 0.toByte))
+      implicit val input = new Input(new ByteArrayInputStream(data :+ 0.toByte))
       val result = TwpReader.in[Seq[Int]]
 
       seq should equal (result)
@@ -65,7 +65,7 @@ class Marshalling extends Spec with ShouldMatchers {
   describe("Any") {
     it("should read Strings") { import TwpConversions._
       val str = "Hallo Welt!"
-      implicit val input = new PushbackInputStream(new ByteArrayInputStream(str.out))
+      implicit val input = new Input(new ByteArrayInputStream(str.out))
       val result = TwpReader.in[Any]
 
       result should equal (str)
@@ -73,7 +73,7 @@ class Marshalling extends Spec with ShouldMatchers {
 
     it("should read structs") { import TwpConversions._
       val struct = ("Markus", 24, Seq("."))
-      implicit val input = new PushbackInputStream(new ByteArrayInputStream(struct.out))
+      implicit val input = new Input(new ByteArrayInputStream(struct.out))
       val result = TwpReader.in[Any]
 
       result.isInstanceOf[LooseStruct] should be (true)
@@ -85,7 +85,7 @@ class Marshalling extends Spec with ShouldMatchers {
 
     it("should read structs with two consecutive sequences, too!") { import TwpConversions._
       val struct = (Seq("foo", "bar"), Seq("blah blah blah"))
-      implicit val input = new PushbackInputStream(new ByteArrayInputStream(struct.out))
+      implicit val input = new Input(new ByteArrayInputStream(struct.out))
       val result = TwpReader.in[Any]
 
       result.isInstanceOf[LooseStruct] should be (true)
