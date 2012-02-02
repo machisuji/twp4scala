@@ -1,24 +1,33 @@
 package twp4scala.tools
 
 import twp4scala.{Connection, Protocol}
-import java.io.{OutputStream, ByteArrayOutputStream, InputStream, ByteArrayInputStream}
+import java.io._
+import scala.collection.mutable.Queue
 
+/**
+ * Override data and/or in and out if you care for performance.
+ */
+abstract class MemoryConnection(initialData: Array[Byte]) extends Connection {
 
-trait MemoryConnection extends Connection {
-  def input: Array[Byte]
-  def output = out.asInstanceOf[ByteArrayOutputStream].toByteArray
-  def in: InputStream = new ByteArrayInputStream(input)
-  val out: OutputStream = new ByteArrayOutputStream()
+  val data: Queue[Byte] = Queue[Byte](initialData: _*)
+
+  def in: InputStream = new InputStream {
+    def read(): Int = if (data.isEmpty) -1 else data.dequeue() & 0xFF
+  }
+  def out: OutputStream = new OutputStream {
+    def write(byte: Int): Unit = data.enqueue(byte.toByte)
+  }
+}
+
+class MemoryProtocol(data: Array[Byte]) extends MemoryConnection(data) with Protocol {
+  def protocolId = -1
+
+  def initiate = ()
+  def close = ()
 }
 
 object MemoryProtocol {
-  def apply(bytes: Array[Byte]): MemoryConnection with Protocol = new MemoryConnection with Protocol {
-    def protocolId = -1
-    def input = if (bytes != null) bytes else output
+  def apply(data: Array[Byte]) = new MemoryProtocol(data)
 
-    def initiate = ()
-    def close = ()
-  }
-
-  def apply(): MemoryConnection with Protocol = apply(null)
+  def apply(): MemoryProtocol = apply(Array[Byte]())
 }
