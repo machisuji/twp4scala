@@ -138,8 +138,12 @@ trait Protocol extends AbstractProtocol with TwpReader with TwpWriter {
 
   /**
    * Sends a message along with the last read extension if there is one.
+   * The extension is consumed in the process.
    */
-  def !! (msg: Message)(implicit ext: Option[LooseStruct]) = send(msg, ext)
+  def !! (msg: Message) {
+    send(msg, in.lastExtension)
+    in.lastExtension = None
+  }
 }
 
 trait Client extends Protocol {
