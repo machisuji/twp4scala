@@ -15,7 +15,8 @@ trait StructCompanion[S <: Struct, T] extends MessageCompanion[S, T] {
   override def isDefinedAt(implicit in: Input) = Preview.check(tag ==)
 }
 
-class LooseStruct(val values: Seq[Any], extensionId: Option[Int] = None) extends TwpWriter with TwpConversions with TwpWritable {
+class LooseStruct(val values: Seq[Any], extensionId: Option[Int] = None) extends TwpWriter
+    with TwpConversions with TwpWritable with CanBeExtension {
   val End = Stream(Array(0.toByte))
 
   def map(names: Symbol*) = {

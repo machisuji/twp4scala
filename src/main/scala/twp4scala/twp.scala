@@ -3,7 +3,7 @@ package twp4scala
 import scala.Either
 import java.lang.IllegalStateException
 import java.io.{PushbackInputStream, IOException}
-import tools.{DebugInput, Debugger}
+import tools.{MemoryProtocol, DebugInput, Debugger}
 
 object Twp {
   def apply[T <: AbstractProtocol, S](proto: T)(block: T => S): Either[Exception, S] = {
@@ -112,7 +112,7 @@ trait Protocol extends AbstractProtocol with TwpReader with TwpWriter {
 
   def shutdown = close
 
-  def ! (msg: Message) {
+  def send(msg: Message, ext: Option[CanBeExtension]) {
     if (Twp.debug) {
       Twp.debug = false
       val data = msg.write.map(_.mkString(" ")).mkString(" | ")
@@ -122,9 +122,24 @@ trait Protocol extends AbstractProtocol with TwpReader with TwpWriter {
       Twp.debug = true
       println("[debug] Sending " + msg.write.flatten.mkString(" "))
     }
-    msg.write.foreach(out.write)
+    if (ext.exists(_.isExtension)) {
+      val data = msg.write.toIterator
+      while (data.hasNext) {
+        val bytes = data.next
+        if (data.hasNext) out.write(bytes)
+        else out.write(bytes.init)
+      }
+      ext.get.write.foreach(out.write)
+    } else msg.write.foreach(out.write)
     out.flush
   }
+
+  def ! (msg: Message) = send(msg, None)
+
+  /**
+   * Sends a message along with the last read extension if there is one.
+   */
+  def !! (msg: Message)(implicit ext: Option[LooseStruct]) = send(msg, ext)
 }
 
 trait Client extends Protocol {
@@ -168,12 +183,17 @@ trait TwpWritable {
   def write: Stream[Array[Byte]]
 }
 
-trait Message extends TwpWriter with TwpWritable with TwpConversions {
-  val End: Stream[Array[Byte]] = Stream(Array(0.toByte))
+trait CanBeExtension extends TwpWritable {
+  def isExtension: Boolean
 }
 
-trait MessageCompanion[S <: Message, T] extends TwpReader
-    with TwpWriter with TwpReadable[T] { self =>
+trait Message extends TwpWriter with CanBeExtension with TwpConversions {
+  val End: Stream[Array[Byte]] = Stream(Array(0.toByte))
+
+  def isExtension = write.headOption.exists(_.headOption.exists(12 ==))
+}
+
+trait MessageCompanion[S <: Message, T] extends TwpReader with TwpWriter with TwpReadable[T] { self =>
 
   def isExtension = tag > 7
 
@@ -212,6 +232,13 @@ trait MessageCompanion[S <: Message, T] extends TwpReader
 
   def tag: Int
   def read(implicit in: Input): T
+
+  /**
+   * Tries to build a Message from the given Struct.
+   * Works only, if the Struct itself represents an extension message, meaning that it has to
+   * have an extension ID.
+   */
+  def from(struct: LooseStruct): Option[S] = unapply(MemoryProtocol(struct.write.flatten.toArray).in).map(apply)
 
   implicit def save(msg: S): Array[Byte] = msg.write.reduceLeft(_ ++ _)
   implicit def in(implicit input: Input): S = apply(read(input))
@@ -353,6 +380,8 @@ trait TwpConversions extends TwpWriter {
 
   implicit def writeSequence[T](seq: Seq[T])(implicit write: (T) => Raw): Raw =
     Raw(sequence ++ seq.map(write(_).data).flatten ++ endOfContent)
+
+  implicit def writeTwpWritable(writable: TwpWritable) = Raw(writable.write.flatten.toArray)
 
   implicit def writeAny(any: Any): Raw = Raw(any match {
     case Raw(data) => data
