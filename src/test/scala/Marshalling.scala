@@ -1,7 +1,7 @@
 import java.io.{PushbackInputStream, ByteArrayInputStream}
 import org.scalatest.matchers.ShouldMatchers
 import org.scalatest.Spec
-import twp4scala.tools.{DebugProtocol, Debugger, DebugInput}
+import twp4scala.tools.{MemoryProtocol, Debugger, DebugInput}
 import twp4scala._
 import twp4scala.{StructCompanion, Struct}
 
@@ -41,7 +41,7 @@ class Marshalling extends Spec with ShouldMatchers {
     it("should work for Structs (and by extension for Messages)") {
       val op = Operation("add", Seq(1, 2, 3))
       val readArgs = Some(op.out).map { data =>
-        val input = DebugProtocol(data)
+        val input = MemoryProtocol(data)
         input.in match {
           case Operation(name, args) => args
           case _ => fail("Could not read Application Type")

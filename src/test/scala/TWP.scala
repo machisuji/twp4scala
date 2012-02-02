@@ -3,7 +3,7 @@ import org.scalatest.Spec
 import org.scalatest.matchers.ShouldMatchers
 import twp4scala._
 import twp4scala.tools.ast.{ApplicationType}
-import twp4scala.tools.{DebugProtocol, TDL}
+import twp4scala.tools.{MemoryProtocol, TDL}
 
 class TWP extends Spec with ShouldMatchers {
 
@@ -57,7 +57,7 @@ class TWP extends Spec with ShouldMatchers {
       import tcp._
       val op = Operation("add", Float64(42))
       val inVal = Some(op.out).map { data =>
-        val dp = DebugProtocol(data)
+        val dp = MemoryProtocol(data)
         dp.in match {
           case Operation(name, value) => value
           case _ => fail("Could not read Application Type")
