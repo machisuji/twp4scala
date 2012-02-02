@@ -425,8 +425,10 @@ case class TwpConverter[T](value: T)(implicit write: (T) => Raw) {
 
 trait Preview {
   def check(p: Int => Boolean)(implicit in: Input) = {
-    val tag = TwpReader.tag
-    try { p(tag) } finally { in.unread(tag) }
+    val tag = in.read
+    try { p(tag) } finally {
+      if (tag != -1) in.unread(tag)
+    }
   }
   def check(size: Int, p: Array[Byte] => Boolean)(implicit in: Input) = {
     val bytes = new Array[Byte](size)
