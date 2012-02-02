@@ -1,5 +1,6 @@
 package twp4scala
 
+import auth.Certificate
 import java.io.{InputStream, PushbackInputStream}
 
 class Input(in: InputStream, bufferSize: Int) extends PushbackInputStream(in, bufferSize) {

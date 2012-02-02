@@ -2,6 +2,7 @@ import org.scalatest.matchers.ShouldMatchers
 import org.scalatest.Spec
 import twp4scala.tools.{Debugger, MemoryProtocol}
 import twp4scala._
+import auth.Signature
 
 class Extensions extends Spec with ShouldMatchers {
   describe("Extension Messages") {
