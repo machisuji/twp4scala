@@ -47,6 +47,7 @@ case class LooseStruct(val values: Seq[Any], extensionId: Option[Int] = None) ex
   def asExtension(id: Int) = new LooseStruct(values, Some(id))
 
   def isExtension = extensionId.isDefined
+  def isExtensionLike = true // structs can always be extensions (anonymous or registered)
 }
 
 object LooseStruct extends TwpReader with TwpReadable[LooseStruct] with Preview {

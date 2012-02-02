@@ -122,7 +122,7 @@ trait Protocol extends AbstractProtocol with TwpReader with TwpWriter {
       Twp.debug = true
       println("[debug] Sending " + msg.write.flatten.mkString(" "))
     }
-    if (ext.exists(_.isExtension)) {
+    if (ext.exists(_.isExtensionLike)) {
       val data = msg.write.toIterator
       while (data.hasNext) {
         val bytes = data.next
@@ -184,13 +184,13 @@ trait TwpWritable {
 }
 
 trait CanBeExtension extends TwpWritable {
-  def isExtension: Boolean
+  def isExtensionLike: Boolean
 }
 
 trait Message extends TwpWriter with CanBeExtension with TwpConversions {
   val End: Stream[Array[Byte]] = Stream(Array(0.toByte))
 
-  def isExtension = write.headOption.exists(_.headOption.exists(12 ==))
+  def isExtensionLike = write.headOption.exists(_.headOption.exists(12 ==))
 }
 
 trait MessageCompanion[S <: Message, T] extends TwpReader with TwpWriter with TwpReadable[T] { self =>
