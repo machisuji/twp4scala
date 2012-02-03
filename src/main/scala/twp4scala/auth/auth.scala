@@ -6,7 +6,7 @@ import twp4scala._
  * @param data DER-encoded Certificate as defined in RFC 3280
  */
 class Certificate(val data: Array[Byte]) extends Message {
-  def write = message(Certificate.tag) #:: binary(data) #:: End
+  def write = Certificate.tag.msg #:: data.out #:: End
 }
 
 object Certificate extends MessageCompanion[Certificate, Array[Byte]] {
@@ -23,7 +23,7 @@ object Certificate extends MessageCompanion[Certificate, Array[Byte]] {
  * @param data SHA1 with RSA encryption, algorithm 1.2.840.113549.1.1.5, as defined in RFC 2437
  */
 class Signature(val data: Array[Byte]) extends Message {
-  def write = message(Signature.tag) #:: convert(data).out #:: End
+  def write = Signature.tag.msg #:: data.out #:: End
 }
 
 object Signature extends MessageCompanion[Signature, Array[Byte]] {
