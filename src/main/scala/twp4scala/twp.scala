@@ -60,6 +60,7 @@ trait MessageCompanion[S <: Message, T] extends TwpReader with TwpWriter with Tw
       checkDefined(in)
       val result = Some(read(in))
       in.lastExtension = checkComplete(in)
+      in.checkIntegrity(result.get)
       result
     } else None
   }
