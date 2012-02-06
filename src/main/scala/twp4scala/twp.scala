@@ -268,7 +268,7 @@ trait Preview {
 }
 object Preview extends Preview
 
-object String {
+object string {
   def unapply(in: Input): Option[String] = {
     val str = TwpReader.tryString(in)
     str.left.foreach(in.unread)
@@ -276,7 +276,7 @@ object String {
   }
 }
 
-object Int {
+object int {
   def unapply(in: Input): Option[Int] = {
     val str = TwpReader.trySomeInt(in)
     str.left.foreach(in.unread)
@@ -284,7 +284,7 @@ object Int {
   }
 }
 
-object Long {
+object long {
   def unapply(in: Input): Option[Long] = {
     val str = TwpReader.tryLongInt(in)
     str.left.foreach(in.unread)
@@ -292,7 +292,7 @@ object Long {
   }
 }
 
-object Binary {
+object binary {
   def unapply(in: Input): Option[Array[Byte]] = {
     val str = TwpReader.tryBinary(in)
     str.left.foreach(in.unread)
