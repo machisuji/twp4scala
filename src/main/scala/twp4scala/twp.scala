@@ -19,13 +19,13 @@ object Twp {
   var debug = false
 
   private[twp4scala] def logw(msg: String) = {
-    if (Twp.debug) println("[DEBUG] write " + msg)
+    if (Twp.debug) println("\n[DEBUG] write " + msg)
   }
   private[twp4scala] def logr(msg: String) = {
-    if (Twp.debug) println("[DEBUG] read " + msg)
+    if (Twp.debug) println("\n[DEBUG] read " + msg)
   }
   private[twp4scala] def log(msg: String) = {
-    if (Twp.debug) println("[DEBUG] " + msg)
+    if (Twp.debug) println("\n[DEBUG] " + msg)
   }
 }
 

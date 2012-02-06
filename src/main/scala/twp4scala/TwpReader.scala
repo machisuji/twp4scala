@@ -107,7 +107,7 @@ trait TwpReader extends ByteOperations {
       else -1
     if (size != -1) {
       val ret = in.take(size)
-      logr("binary " + ret); Right(ret)
+      logr("binary (" + size + "): " + ret.mkString(" ")); Right(ret)
     } else {
       Left(tg)
     }
