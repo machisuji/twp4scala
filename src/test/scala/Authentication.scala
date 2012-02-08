@@ -13,7 +13,8 @@ class Authentication extends Spec with ShouldMatchers {
         val port = 6666
         def handleClient(socket: Socket) {
           Twp(Echo(socket)) { server =>
-            val error = server.authenticateWith("src/test/resources/cert.p12", Some("foobar"), false)
+            val error = server.authenticateWith("src/test/resources/cert.p12", Some("foobar"),
+              initiate = false)
             error.foreach(err => println("Error: " + err.msg))
             error should not be ('defined)
             server.in match {
@@ -26,7 +27,8 @@ class Authentication extends Spec with ShouldMatchers {
       echoServer.start()
       try {
         Twp(Echo("localhost", 6666)) { client =>
-          val error = client.authenticateWith("src/test/resources/cert.p12", Some("foobar"))
+          val error = client.authenticateWith("src/test/resources/cert.p12", Some("foobar")
+            initiate = true) // initiate true per default
           error.foreach(err => println("Error: " + err.msg))
           error should not be ('defined)
           client ! Request("hallo")
