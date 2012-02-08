@@ -5,6 +5,7 @@ import auth.{Signer, Signature, AuthError, Certificate}
 import tools.GayString._
 import java.io.OutputStream
 import tools.{GayString, DebugInput}
+import awesome.trailingConditionals
 
 trait AbstractProtocol extends Connection {
   def initiate
@@ -84,21 +85,30 @@ trait Protocol extends AbstractProtocol with TwpReader with TwpWriter { self =>
   }
 
   /**
-   * Secures this connection with the given certificate.
+   * Authenticate this connection.
+   *
+   * @param file Certificate to use (.p12 file for instance)
+   * @param password Password if required
+   * @param initiate Should we initiate or wait for the other side to start?
    *
    * @return Some authentication error if the authentication failed.
    */
-  def authenticateWith(file: String, password: Option[String]): Option[AuthError] = {
+  def authenticateWith(file: String, password: Option[String], initiate: Boolean = true): Option[AuthError] = {
     val signer = new Signer(file, password)
-    send(signer.certificate)
+    send(signer.certificate) provided initiate
     in match {
       case AuthError(code, msg) => Some(AuthError(code, msg))
       case Certificate(cert) => {
         in.lastCertificate = Some(Certificate(cert)) // Server's certificate to check incoming messages
         self.signer = Some(signer)
+        send(signer.certificate) unless initiate
         None
       }
-      case _ => Some(OtherError("Authentication failed (unknown error)"))
+      case _ => {
+        val error = OtherError("Authentication failed (bad incoming certificate)")
+        send(error)
+        Some(error)
+      }
     }
   }
 
