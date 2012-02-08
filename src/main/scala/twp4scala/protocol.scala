@@ -111,13 +111,6 @@ trait Protocol extends AbstractProtocol with TwpReader with TwpWriter { self =>
       }
     }
   }
-
-  def authenticate() {
-    in match {
-      case Certificate(value) => in.lastCertificate = Some(Certificate(value))
-      case _ => println("no authentication")
-    }
-  }
 }
 
 trait Client extends Protocol {
