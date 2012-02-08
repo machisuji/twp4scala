@@ -50,6 +50,15 @@ class Certificate(val value: java.security.cert.Certificate) extends Message {
     sig.update(data)
     sig.verify(signature)
   }
+
+  /**
+   * @return A java.security.Signature initialized for verifying through this Certificate.
+   */
+  def createVerifier = {
+    val sig = JSignature.getInstance(Signature.algorithm)
+    sig.initVerify(value.getPublicKey)
+    sig
+  }
 }
 
 object Certificate extends MessageCompanion[Certificate, java.security.cert.Certificate] {
