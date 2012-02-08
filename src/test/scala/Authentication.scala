@@ -27,6 +27,7 @@ class Authentication extends Spec with ShouldMatchers {
       echoServer.start()
       try {
         Twp(Echo("localhost", 6666)) { client =>
+          // server and client would actually have different certificates
           val error = client.authenticateWith("src/test/resources/cert.p12", Some("foobar")
             initiate = true) // initiate true per default
           error.foreach(err => println("Error: " + err.msg))
