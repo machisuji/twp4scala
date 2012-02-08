@@ -108,6 +108,8 @@ object Signature extends MessageCompanion[Signature, Array[Byte]] {
 
 class AuthError(val code: Int, val msg: String) extends Message {
   def write = AuthError.tag.msg #:: code.out #:: msg.out #:: End
+
+  override def toString = getClass.getSimpleName + " (" + code + "): " + msg
 }
 
 object AuthError extends MessageCompanion[AuthError, (Int, String)] {
