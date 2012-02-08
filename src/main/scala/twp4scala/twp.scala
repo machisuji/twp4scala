@@ -58,9 +58,11 @@ trait MessageCompanion[S <: Message, T] extends TwpReader with TwpWriter with Tw
   def unapply(in: Input): Option[T] = {
     if (isDefinedAt(in)) {
       checkDefined(in)
+      in.startVerify()
       val result = Some(read(in))
+      in.stopVerify()
       in.lastExtension = checkComplete(in)
-      in.checkIntegrity(result.get)
+      require(in.verify(), "valid signature")
       result
     } else None
   }
