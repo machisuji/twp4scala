@@ -2,9 +2,13 @@ import java.io.ByteArrayInputStream
 import java.net.Socket
 import org.scalatest.matchers.ShouldMatchers
 import org.scalatest.Spec
-import twp4scala.auth.{Signer, Certificate, Signature}
+import twp4scala.auth.{Signer, Signature}
+import twp4scala.protocol._
 import twp4scala.protocol.echo._
+import twp4scala.tools.MemoryProtocol
 import twp4scala.{Input, Twp, TcpServer}
+import twp4scala.example.tcp._
+import twp4scala.tools.GayString._
 
 class Authentication extends Spec with ShouldMatchers {
   describe("Verification") {
@@ -65,6 +69,20 @@ class Authentication extends Spec with ShouldMatchers {
           case _ => fail("no Request read")
         }
       } should produce[IllegalArgumentException]
+    }
+
+    it("should work with more complex messages, too") {
+      val data = MemoryProtocol()
+      val msg = tcp.Request(42, Add(1, 1).value.asInstanceOf[tcp.Expression].arguments)
+      val signer = new Signer("src/test/resources/cert.p12", Some("foobar"))
+      val sig = Signature.from(msg)(signer)
+      println("Signature from: %s".format(msg.out.tail.init.mkString(" ")) painted Green)
+      data.send(msg, Some(sig))
+      data.in.lastCertificate = Some(signer.certificate)
+      data.in match {
+        case tcp.Request(rid, params: tcp.Parameters) => params.forall(1 ==) should be (true)
+        case _ => fail("no Request read")
+      }
     }
   }
 }
