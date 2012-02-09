@@ -79,18 +79,10 @@ package object tcp {
       }
     }
 
-    def start() {
-      Operation.all.foreach(_.server.start)
-    }
+    def start() = Operation.all.foreach(_.server.start)
+    def stop() = Operation.all.foreach(_.server.stop)
 
-    def stop() {
-      Operation.all.foreach(_.server.stop)
-    }
-
-    def host_=(host: String) {
-      Operation.all.foreach(_.host = host)
-    }
-
+    def host_=(host: String) = Operation.all.foreach(_.host = host)
     def host: Seq[String] = Operation.all.map(_.host)
   }
 
