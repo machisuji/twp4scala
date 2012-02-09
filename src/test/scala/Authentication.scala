@@ -80,7 +80,7 @@ class Authentication extends Spec with ShouldMatchers {
       data.send(msg, Some(sig))
       data.in.lastCertificate = Some(signer.certificate)
       data.in match {
-        case tcp.Request(rid, params: tcp.Parameters) => params.forall(1 ==) should be (true)
+        case tcp.Request(rid, params: tcp.Parameters) => rid should be (42)
         case _ => fail("no Request read")
       }
     }
