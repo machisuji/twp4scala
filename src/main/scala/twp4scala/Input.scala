@@ -6,9 +6,6 @@ import collection.mutable.Queue
 import tools.GayString._
 import awesome.trailingConditionals
 
-/**
- * The only class within which I need vars. :/
- */
 class Input(
   in: InputStream,
   bufferSize: Int
