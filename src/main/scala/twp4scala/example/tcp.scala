@@ -1,6 +1,7 @@
 package twp4scala.example
 
 import twp4scala._
+  import tools.GayString._
 import twp4scala.protocol.tcp._
 import java.net.{InetAddress, Socket}
 
@@ -57,6 +58,8 @@ package object tcp {
         case value: Float64 => value.value
         case expr: Expression => {
           val result = Twp(TCP(InetAddress.getByAddress(expr.host).getHostAddress, expr.port)) { tcp =>
+            val error = tcp.authenticateWith("mkahl.p12", Some("hallo133"))
+            error.foreach(err => println("Auth failed: %s".format(err) painted Red))
             tcp ! Request(42, expr.arguments)
             tcp.in match {
               case Reply(rid, result: Float64) => result.value
@@ -91,6 +94,8 @@ package object tcp {
     def handleClient(socket: Socket) {
       Twp(TCP(socket)) { tcp =>
         try {
+          val error = tcp.authenticateWith("mkahl.p12", Some("hallo133"), initiate = false)
+          error.foreach(err => println("Auth failed: %s".format(err) painted Red))
           tcp.in match {
             case Request(rid: Int, params: Parameters) => {
               val values = params.flatMap { term =>
@@ -136,6 +141,8 @@ package object tcp {
       val host = InetAddress.getByAddress(expr.host).getHostAddress
       val client = TCP(host, expr.port)
       val result = Twp(client) { tcp =>
+        val error = tcp.authenticateWith("mkahl.p12", Some("hallo133"))
+        error.foreach(err => println("Auth failed: %s".format(err) painted Red))
         tcp ! Request(42, expr.arguments)
         tcp.in match {
           case Reply(rid: Int, value: Float64) => Right(value.value)
