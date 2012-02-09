@@ -17,7 +17,7 @@ class Input(
   var lastCertificate: Option[Certificate] = None
   var lastExtension: Option[LooseStruct] = None // well, Input has state anyway, so what the heck
 
-  def checkIntegrity(data: Product) {
+  def verify(data: Product) {
     import TwpConversions.{convert, writeAny}
     lastCertificate.foreach(cert =>
       lastExtension.flatMap(Signature from).foreach(sig =>
@@ -25,9 +25,9 @@ class Input(
           "Invalid Signature for: " + data.toString)))
   }
 
-  def checkIntegrity(date: Any): Unit = date match {
-    case product: Product => checkIntegrity(product)
-    case any => checkIntegrity(new Tuple1(any))
+  def verify(date: Any): Unit = date match {
+    case product: Product => verify(product)
+    case any => verify(new Tuple1(any))
   }
 
   def this(in: InputStream) = this(in, 16)
