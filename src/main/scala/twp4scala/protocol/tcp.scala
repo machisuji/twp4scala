@@ -46,7 +46,7 @@ package object tcp {
 
   /** End Application Types */
 
-  case class Term(value: Any) extends TwpWritable with TwpConversions {
+  case class Term(value: Any) extends Message {
     require(value.isInstanceOf[Float64] || value.isInstanceOf[Expression])
 
     def write: Stream[Array[Byte]] = Stream(value match {
