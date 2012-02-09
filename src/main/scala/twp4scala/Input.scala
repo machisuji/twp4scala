@@ -91,18 +91,5 @@ class Input(
     super.unread(buffer, offset, length)
   }
 
-  def checkIntegrity(data: Product) {
-    import TwpConversions.{convert, writeAny}
-    lastCertificate.foreach(cert =>
-      lastExtension.flatMap(Signature from).foreach(sig =>
-        require(cert.verify(data.productIterator.flatMap((field: Any) => field.out).toArray, sig.data),
-          "Invalid Signature for: " + data.toString)))
-  }
-
-  def checkIntegrity(date: Any): Unit = date match {
-    case product: Product => checkIntegrity(product)
-    case any => checkIntegrity(new Tuple1(any))
-  }
-
   def this(in: InputStream) = this(in, 16)
 }
