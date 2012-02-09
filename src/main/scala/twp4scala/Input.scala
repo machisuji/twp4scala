@@ -3,9 +3,6 @@ package twp4scala
 import auth.{Signature, Certificate}
 import java.io.{InputStream, PushbackInputStream}
 
-/**
- * The only class within which I need vars. :/
- */
 class Input(
   in: InputStream,
   bufferSize: Int
