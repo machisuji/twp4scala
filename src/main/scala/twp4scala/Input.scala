@@ -3,6 +3,8 @@ package twp4scala
 import auth.{Signature, Certificate}
 import java.io.{InputStream, PushbackInputStream}
 import collection.mutable.Queue
+import tools.GayString._
+import awesome.trailingConditionals
 
 /**
  * The only class within which I need vars. :/
@@ -23,7 +25,12 @@ class Input(
   private val verifyQueue: Queue[Int] = new Queue[Int]
 
   private def verifyLeft() = Iterator.continually(verifyQueue.nonEmpty).takeWhile(true ==).
-    map(_ => verifyQueue.dequeue().toByte).foreach(verifier.update)
+    map(_ => verifyQueue.dequeue().toByte).foreach { byte =>
+      print("%d ".format(byte) painted Green) provided Twp.debug
+      verifier.update(byte)
+    }
+
+  private def verifyLater(byte: Int) = verifyQueue enqueue byte
 
   def startVerify() {
     if (lastCertificate.isDefined) {
@@ -49,7 +56,7 @@ class Input(
     val byte = super.read
     if (doVerify) {
       verifyLeft()
-      verifyQueue enqueue byte
+      verifyLater(byte)
     }
     byte
   }
@@ -59,8 +66,11 @@ class Input(
     if (doVerify) {
       verifyLeft()
       if (length < 5) { // Axiom: The TWP implementation will never unread more than 4 bytes at a time
-        for (i <- offset until length; byte = buffer(i).toByte) verifyQueue enqueue byte
+        for (i <- offset until length; byte = buffer(i).toByte) verifyLater(byte)
       } else {
+        if (Twp.debug) {
+          print("%s ".format(buffer.drop(offset).take(length).mkString(" ")) painted Green)
+        }
         verifier.update(buffer, offset, length)
       }
     }
